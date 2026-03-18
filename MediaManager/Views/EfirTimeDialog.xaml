@@ -1,0 +1,46 @@
+﻿<Window x:Class="MediaManager.Views.EfirTimeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Выберите время эфира"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+
+    <StackPanel Margin="24,16,24,20">
+
+        <WrapPanel x:Name="buttonsPanel"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,16"/>
+
+        <Button Content="Отмена"
+                Click="Cancel_Click"
+                Width="120" Height="32"
+                HorizontalAlignment="Center"
+                Cursor="Hand"
+                FontSize="13"
+                Foreground="#616161"
+                Background="#E0E0E0"
+                BorderThickness="0">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="4"
+                            Padding="8,0">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#BDBDBD"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="#9E9E9E"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+    </StackPanel>
+</Window>

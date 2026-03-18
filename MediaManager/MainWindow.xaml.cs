@@ -1,54 +1,62 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using MediaManager.Models;
 using MediaManager.ViewModels;
 
 namespace MediaManager;
 
 public partial class MainWindow : Window
 {
+    private readonly MainViewModel _mainViewModel;
+
     public MainWindow()
     {
         InitializeComponent();
 
-        // Создаём SettingsViewModel (загружает настройки из файла)
         var settingsViewModel = new SettingsViewModel();
+        _mainViewModel = new MainViewModel(settingsViewModel);
 
-        // Создаём MainViewModel и передаём ему настройки
-        var mainViewModel = new MainViewModel(settingsViewModel);
-
-        // Устанавливаем контексты данных
-        DataContext = mainViewModel;
+        DataContext = _mainViewModel;
         settingsPanel.DataContext = settingsViewModel;
     }
 
-    // ==============================
-    // Кастомный заголовок окна
-    // ==============================
+    // --- Кнопки копирования ---
 
     /// <summary>
-    /// Перетаскивание окна за синюю шапку.
-    /// Двойной клик — развернуть/восстановить.
+    /// Обработчик нажатия любой кнопки копирования.
+    /// Кнопка хранит ключ направления в свойстве Tag,
+    /// а DataContext кнопки — это MediaFile.
     /// </summary>
+    private async void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button)
+            return;
+
+        if (button.DataContext is not MediaFile file)
+            return;
+
+        if (button.Tag is not string destinationKey)
+            return;
+
+        await _mainViewModel.ExecuteCopyAsync(file, destinationKey);
+    }
+
+    // --- Title bar ---
+
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
         {
-            // Двойной клик — переключаем развёрнутое/обычное состояние
             ToggleMaximize();
         }
         else
         {
-            // Одинарный клик — перетаскивание окна
-            // Если окно развёрнуто, сначала восстанавливаем его
             if (WindowState == WindowState.Maximized)
             {
-                // Запоминаем позицию мыши относительно окна
                 var point = e.GetPosition(this);
                 double proportionX = point.X / ActualWidth;
-
                 WindowState = WindowState.Normal;
-
-                // Перемещаем окно так, чтобы мышь осталась пропорционально на том же месте
                 Left = Mouse.GetPosition(null).X - (Width * proportionX);
                 Top = 0;
             }
@@ -56,28 +64,15 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Кнопка «Свернуть»</summary>
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
+        => WindowState = WindowState.Minimized;
 
-    /// <summary>Кнопка «Развернуть / Восстановить»</summary>
     private void MaximizeButton_Click(object sender, RoutedEventArgs e)
-    {
-        ToggleMaximize();
-    }
+        => ToggleMaximize();
 
-    /// <summary>Кнопка «Закрыть»</summary>
     private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
+        => Close();
 
-    /// <summary>
-    /// Переключить между развёрнутым и обычным состоянием.
-    /// Также обновляет иконку кнопки.
-    /// </summary>
     private void ToggleMaximize()
     {
         if (WindowState == WindowState.Maximized)

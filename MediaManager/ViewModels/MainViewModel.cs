@@ -1,8 +1,11 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using MediaManager.Models;
 using MediaManager.Services;
+using MediaManager.Views;
 
 namespace MediaManager.ViewModels;
 
@@ -15,19 +18,11 @@ public class MainViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
-    // ==============================
-    // Сервисы
-    // ==============================
-
-    /// <summary>Сервис поиска файлов</summary>
     private readonly FileDiscoveryService _discoveryService = new();
-
-    /// <summary>ViewModel настроек (чтобы получать текущие пути)</summary>
+    private readonly FileCopyService _copyService = new();
     private readonly SettingsViewModel _settingsViewModel;
 
-    // ==============================
-    // Свойства
-    // ==============================
+    // --- Свойства ---
 
     private DateTime _selectedDate = DateTime.Today;
     public DateTime SelectedDate
@@ -40,7 +35,6 @@ public class MainViewModel : INotifyPropertyChanged
                 _selectedDate = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedDateText));
-                // При смене даты автоматически сканируем файлы
                 ScanFiles();
             }
         }
@@ -52,90 +46,56 @@ public class MainViewModel : INotifyPropertyChanged
     public string ProjectName
     {
         get => _projectName;
-        set
-        {
-            if (_projectName != value)
-            {
-                _projectName = value;
-                OnPropertyChanged();
-            }
-        }
+        set { if (_projectName != value) { _projectName = value; OnPropertyChanged(); } }
     }
 
     private bool _isSettingsVisible = false;
     public bool IsSettingsVisible
     {
         get => _isSettingsVisible;
-        set
-        {
-            if (_isSettingsVisible != value)
-            {
-                _isSettingsVisible = value;
-                OnPropertyChanged();
-            }
-        }
+        set { if (_isSettingsVisible != value) { _isSettingsVisible = value; OnPropertyChanged(); } }
     }
 
     private string _statusMessage = "Готово";
     public string StatusMessage
     {
         get => _statusMessage;
-        set
-        {
-            if (_statusMessage != value)
-            {
-                _statusMessage = value;
-                OnPropertyChanged();
-            }
-        }
+        set { if (_statusMessage != value) { _statusMessage = value; OnPropertyChanged(); } }
     }
 
-    /// <summary>
-    /// Список групп файлов для отображения в интерфейсе.
-    /// Каждая группа = одна папка с файлами внутри.
-    /// </summary>
     private ObservableCollection<FolderGroup> _folderGroups = new();
     public ObservableCollection<FolderGroup> FolderGroups
     {
         get => _folderGroups;
-        set
-        {
-            _folderGroups = value;
-            OnPropertyChanged();
-        }
+        set { _folderGroups = value; OnPropertyChanged(); }
     }
 
-    /// <summary>
-    /// Общее количество найденных файлов (для отображения в статусе).
-    /// </summary>
     private int _totalFilesFound;
     public int TotalFilesFound
     {
         get => _totalFilesFound;
-        set
-        {
-            if (_totalFilesFound != value)
-            {
-                _totalFilesFound = value;
-                OnPropertyChanged();
-            }
-        }
+        set { if (_totalFilesFound != value) { _totalFilesFound = value; OnPropertyChanged(); } }
     }
 
-    /// <summary>
-    /// Показывать ли заглушку "Файлы не найдены".
-    /// true, если список пуст.
-    /// </summary>
     public bool IsEmpty => FolderGroups.Count == 0;
 
-    /// <summary>
-    /// Путь рабочей папки для отображения в шапке.
-    /// </summary>
-    public string WorkingFolderDisplay => _settingsViewModel.SearchFolder;
+    /// <summary>Блокировка кнопок во время копирования</summary>
+    private bool _isCopying = false;
+    public bool IsCopying
+    {
+        get => _isCopying;
+        set { if (_isCopying != value) { _isCopying = value; OnPropertyChanged(); } }
+    }
 
-    // ==============================
-    // Команды
-    // ==============================
+    /// <summary>Прогресс копирования (0–100)</summary>
+    private double _copyProgress;
+    public double CopyProgress
+    {
+        get => _copyProgress;
+        set { if (Math.Abs(_copyProgress - value) > 0.1) { _copyProgress = value; OnPropertyChanged(); } }
+    }
+
+    // --- Команды ---
 
     public RelayCommand NavigateBackCommand { get; }
     public RelayCommand NavigateForwardCommand { get; }
@@ -143,50 +103,127 @@ public class MainViewModel : INotifyPropertyChanged
     public RelayCommand ToggleSettingsCommand { get; }
     public RelayCommand CreateProjectCommand { get; }
 
-    // ==============================
-    // Конструктор
-    // ==============================
-
     public MainViewModel(SettingsViewModel settingsViewModel)
     {
         _settingsViewModel = settingsViewModel;
 
-        NavigateBackCommand = new RelayCommand(_ =>
-        {
-            SelectedDate = SelectedDate.AddDays(-1);
-        });
+        NavigateBackCommand = new RelayCommand(_ => SelectedDate = SelectedDate.AddDays(-1));
+        NavigateForwardCommand = new RelayCommand(_ => SelectedDate = SelectedDate.AddDays(1));
+        RefreshCommand = new RelayCommand(_ => ScanFiles());
+        ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
+        CreateProjectCommand = new RelayCommand(_ => { /* Этап 5 */ });
 
-        NavigateForwardCommand = new RelayCommand(_ =>
-        {
-            SelectedDate = SelectedDate.AddDays(1);
-        });
-
-        RefreshCommand = new RelayCommand(_ =>
-        {
-            ScanFiles();
-        });
-
-        ToggleSettingsCommand = new RelayCommand(_ =>
-        {
-            IsSettingsVisible = !IsSettingsVisible;
-        });
-
-        CreateProjectCommand = new RelayCommand(_ =>
-        {
-            // Пока ничего — потом тут будет создание проекта
-        });
-
-        // Первоначальное сканирование при запуске
         ScanFiles();
     }
 
-    // ==============================
-    // Сканирование файлов
-    // ==============================
+    // --- Копирование ---
 
     /// <summary>
-    /// Сканировать папки и обновить список файлов.
+    /// Вызывается из code-behind. Параметры: файл и ключ направления.
     /// </summary>
+    public async Task ExecuteCopyAsync(MediaFile file, string destinationKey)
+    {
+        if (IsCopying)
+            return;
+
+        var settings = _settingsViewModel.GetSettings();
+        string? efirTime = null;
+
+        // Для Эфир-направления ПАНОРАМА/ДАЙДЖЕСТ — спрашиваем время
+        if (destinationKey == "Эфир" &&
+            (file.FileType == MediaFileType.Panorama || file.FileType == MediaFileType.Digest))
+        {
+            string[] timeOptions = file.FileType == MediaFileType.Digest
+                ? ["07", "12", "14", "16"]
+                : ["18", "20"];
+
+            var dialog = new EfirTimeDialog(timeOptions);
+            dialog.Owner = Application.Current.MainWindow;
+            if (dialog.ShowDialog() != true || dialog.SelectedTime == null)
+                return;
+
+            efirTime = dialog.SelectedTime;
+        }
+
+        // Получаем все направления для этого файла
+        var destinations = _copyService.GetDestinations(file, settings, efirTime);
+
+        // Находим нужное направление по ключу (Label)
+        var dest = destinations.FirstOrDefault(d => d.Label == destinationKey);
+        if (dest == null)
+        {
+            StatusMessage = $"Направление «{destinationKey}» не найдено";
+            return;
+        }
+
+        // Проверяем: уже скопировано?
+        if (_copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath))
+        {
+            if (dest.CopyPathToClipboard)
+            {
+                Clipboard.SetText(dest.DestinationPath);
+                StatusMessage = $"✅ Уже скопировано. Путь в буфере: {dest.DestinationPath}";
+            }
+            else
+            {
+                StatusMessage = $"✅ Файл уже скопирован: {Path.GetFileName(dest.DestinationPath)}";
+            }
+            return;
+        }
+
+        // Если файл существует но отличается — спрашиваем перезапись
+        if (File.Exists(dest.DestinationPath))
+        {
+            var result = MessageBox.Show(
+                $"Файл уже существует в папке назначения, но отличается.\n\n" +
+                $"Перезаписать?\n{dest.DestinationPath}",
+                "Подтверждение перезаписи",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                StatusMessage = "Копирование отменено";
+                return;
+            }
+        }
+
+        // Копируем
+        IsCopying = true;
+        CopyProgress = 0;
+        StatusMessage = $"Копирование: {file.FileName} → {destinationKey}...";
+
+        var progress = new Progress<double>(percent =>
+        {
+            CopyProgress = percent;
+        });
+
+        bool success = await _copyService.CopyFileAsync(
+            file.FullPath, dest.DestinationPath, progress);
+
+        IsCopying = false;
+        CopyProgress = 0;
+
+        if (success)
+        {
+            if (dest.CopyPathToClipboard)
+            {
+                Clipboard.SetText(dest.DestinationPath);
+                StatusMessage = $"✅ Скопировано! Путь в буфере: {dest.DestinationPath}";
+            }
+            else
+            {
+                StatusMessage = $"✅ Скопировано: {file.FileName} → {destinationKey}";
+            }
+        }
+        else
+        {
+            StatusMessage = $"❌ Ошибка копирования: {file.FileName} → {destinationKey}";
+        }
+    }
+
+    // --- Сканирование ---
+
     private void ScanFiles()
     {
         try
@@ -202,21 +239,14 @@ public class MainViewModel : INotifyPropertyChanged
 
             FolderGroups = new ObservableCollection<FolderGroup>(groups);
 
-            // Считаем общее количество файлов во всех группах
             TotalFilesFound = 0;
             foreach (var group in groups)
-            {
                 TotalFilesFound += group.Files.Count;
-            }
 
-            // Обновляем свойство IsEmpty (оно зависит от FolderGroups)
             OnPropertyChanged(nameof(IsEmpty));
 
-            // Обновляем статус
             if (TotalFilesFound == 0)
-            {
                 StatusMessage = $"Файлы для {SelectedDateText} не найдены";
-            }
             else
             {
                 string filesWord = GetFilesWord(TotalFilesFound);
@@ -234,39 +264,24 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    // ==============================
-    // Вспомогательные методы для склонения слов
-    // ==============================
+    // --- Вспомогательные ---
 
-    /// <summary>
-    /// Склонение слова "файл" по числу: 1 файл, 2 файла, 5 файлов.
-    /// </summary>
     private static string GetFilesWord(int count)
     {
         int lastTwo = count % 100;
         int lastOne = count % 10;
-
-        if (lastTwo >= 11 && lastTwo <= 19)
-            return "файлов";
-        if (lastOne == 1)
-            return "файл";
-        if (lastOne >= 2 && lastOne <= 4)
-            return "файла";
+        if (lastTwo >= 11 && lastTwo <= 19) return "файлов";
+        if (lastOne == 1) return "файл";
+        if (lastOne >= 2 && lastOne <= 4) return "файла";
         return "файлов";
     }
 
-    /// <summary>
-    /// Склонение слова "папка" по числу: 1 папке, 2 папках, 5 папках.
-    /// </summary>
     private static string GetFoldersWord(int count)
     {
         int lastTwo = count % 100;
         int lastOne = count % 10;
-
-        if (lastTwo >= 11 && lastTwo <= 19)
-            return "папках";
-        if (lastOne == 1)
-            return "папке";
+        if (lastTwo >= 11 && lastTwo <= 19) return "папках";
+        if (lastOne == 1) return "папке";
         return "папках";
     }
 }
