@@ -7,13 +7,15 @@
         MinWidth="1250" MinHeight="600"
         Width="1250" Height="850"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="False"
         Background="#F5F5F5">
 
     <Window.Resources>
-        <!-- Конвертер: bool → Visibility (для скрытия/показа панели настроек) -->
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- Стиль для кнопок навигации (◀ дата ▶) -->
+        <!-- ========== СТИЛИ КНОПОК ========== -->
+
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="40"/>
             <Setter Property="Height" Value="32"/>
@@ -46,7 +48,6 @@
             </Setter>
         </Style>
 
-        <!-- Стиль для основных кнопок действий -->
         <Style x:Key="ActionButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="32"/>
             <Setter Property="Padding" Value="16,0"/>
@@ -75,122 +76,312 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Стиль кнопок заголовка окна (свернуть, развернуть, закрыть) -->
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1976D2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1565C0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Отдельный стиль для кнопки закрыть (красный при наведении) -->
+        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource TitleBarButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E53935"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#C62828"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
-    <!-- Главная вертикальная раскладка -->
-    <DockPanel>
+    <!-- Рамка вокруг всего окна (чтобы было видно границу при WindowStyle=None) -->
+    <Border BorderBrush="#0D47A1" BorderThickness="1">
+        <DockPanel>
 
-        <!-- ========== ВЕРХНЯЯ ПАНЕЛЬ (шапка) ========== -->
-        <Border DockPanel.Dock="Top" Background="#1565C0" Padding="16,10">
-            <DockPanel>
-                <!-- Кнопка "Настройки" справа -->
-                <Button DockPanel.Dock="Right"
-                        Content="⚙ Настройки"
-                        Command="{Binding ToggleSettingsCommand}"
-                        Style="{StaticResource ActionButtonStyle}"
-                        Background="#1976D2"
-                        HorizontalAlignment="Right"/>
+            <!-- ========== ВЕРХНЯЯ ПАНЕЛЬ (шапка = заголовок окна) ========== -->
+            <Border DockPanel.Dock="Top" Background="#1565C0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <DockPanel Height="40">
 
-                <!-- Рабочая папка -->
-                <TextBlock Text="📂 D:\Projects\ПАНОРАМА"
-                           FontSize="14"
-                           Foreground="#BBDEFB"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"/>
-            </DockPanel>
-        </Border>
+                    <!-- Кнопки окна справа: свернуть, развернуть, закрыть -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="⚙ Настройки"
+                                Command="{Binding ToggleSettingsCommand}"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                Width="Auto"
+                                Padding="12,0"
+                                FontSize="13"
+                                Margin="0,0,8,0"/>
+                        <Button Content="—"
+                                Click="MinimizeButton_Click"
+                                Style="{StaticResource TitleBarButtonStyle}"/>
+                        <Button Content="☐"
+                                Click="MaximizeButton_Click"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                x:Name="maximizeButton"/>
+                        <Button Content="✕"
+                                Click="CloseButton_Click"
+                                Style="{StaticResource CloseButtonStyle}"/>
+                    </StackPanel>
 
-        <!-- ========== ПАНЕЛЬ НАСТРОЕК (скрыта по умолчанию) ========== -->
-        <!-- Visibility привязана к MainViewModel через имя окна (mainWindow) -->
-        <views:SettingsPanel DockPanel.Dock="Top"
-                             x:Name="settingsPanel"
-                             Visibility="{Binding DataContext.IsSettingsVisible,
-                                          ElementName=mainWindow,
-                                          Converter={StaticResource BoolToVis}}" />
+                    <!-- Название программы слева -->
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="12,0,0,0">
+                        <TextBlock Text="📺"
+                                   FontSize="18"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <TextBlock Text="Медиа-менеджер"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
 
-        <!-- ========== СТРОКА СОЗДАНИЯ ПРОЕКТА ========== -->
-        <Border DockPanel.Dock="Top" Background="White"
-                Padding="16,10"
-                BorderBrush="#E0E0E0"
-                BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Имя проекта:"
-                           FontSize="14"
-                           VerticalAlignment="Center"
-                           Margin="0,0,10,0"/>
-                <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
-                         Width="350" Height="32"
-                         FontSize="14"
-                         VerticalContentAlignment="Center"
-                         Padding="8,0"
-                         Margin="0,0,10,0"/>
-                <Button Content="Создать проект"
-                        Command="{Binding CreateProjectCommand}"
-                        Style="{StaticResource ActionButtonStyle}"
-                        Background="#43A047"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ========== ПАНЕЛЬ НАВИГАЦИИ ПО ДАТЕ ========== -->
-        <Border DockPanel.Dock="Top" Background="White"
-                Padding="16,8"
-                BorderBrush="#E0E0E0"
-                BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                <!-- Кнопка "Назад" -->
-                <Button Content="◀"
-                        Command="{Binding NavigateBackCommand}"
-                        Style="{StaticResource NavButtonStyle}"
-                        Margin="0,0,12,0"/>
-
-                <!-- Текущая дата -->
-                <TextBlock Text="{Binding SelectedDateText}"
-                           FontSize="18" FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           Margin="0,0,12,0"/>
-
-                <!-- Кнопка "Вперёд" -->
-                <Button Content="▶"
-                        Command="{Binding NavigateForwardCommand}"
-                        Style="{StaticResource NavButtonStyle}"
-                        Margin="0,0,20,0"/>
-
-                <!-- Кнопка "Обновить" -->
-                <Button Content="🔄 Обновить"
-                        Command="{Binding RefreshCommand}"
-                        Style="{StaticResource ActionButtonStyle}"
-                        Background="#1565C0"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ========== СТАТУС-БАР ВНИЗУ ========== -->
-        <Border DockPanel.Dock="Bottom"
-                Background="#E0E0E0"
-                Padding="16,6"
-                BorderBrush="#BDBDBD"
-                BorderThickness="0,1,0,0">
-            <TextBlock Text="{Binding StatusMessage}"
-                       FontSize="12"
-                       Foreground="#616161"/>
-        </Border>
-
-        <!-- ========== ОСНОВНАЯ ОБЛАСТЬ — СПИСОК ФАЙЛОВ ========== -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                      Padding="16">
-            <!-- Пока заглушка — здесь будут карточки файлов (Этап 3) -->
-            <Border Background="White"
-                    CornerRadius="8"
-                    Padding="24"
-                    MinHeight="200">
-                <TextBlock Text="Файлы для выбранной даты будут отображаться здесь (Этап 3)"
-                           FontSize="16"
-                           Foreground="#9E9E9E"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
+                </DockPanel>
             </Border>
-        </ScrollViewer>
 
-    </DockPanel>
+            <!-- ========== ПАНЕЛЬ НАСТРОЕК (скрыта по умолчанию) ========== -->
+            <views:SettingsPanel DockPanel.Dock="Top"
+                                 x:Name="settingsPanel"
+                                 Visibility="{Binding DataContext.IsSettingsVisible,
+                                              ElementName=mainWindow,
+                                              Converter={StaticResource BoolToVis}}" />
+
+            <!-- ========== СТРОКА СОЗДАНИЯ ПРОЕКТА ========== -->
+            <Border DockPanel.Dock="Top" Background="White"
+                    Padding="16,10"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Имя проекта:"
+                               FontSize="14"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+                    <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
+                             Width="350" Height="32"
+                             FontSize="14"
+                             VerticalContentAlignment="Center"
+                             Padding="8,0"
+                             Margin="0,0,10,0"/>
+                    <Button Content="Создать проект"
+                            Command="{Binding CreateProjectCommand}"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Background="#43A047"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ========== ПАНЕЛЬ НАВИГАЦИИ ПО ДАТЕ ========== -->
+            <Border DockPanel.Dock="Top" Background="White"
+                    Padding="16,8"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <Button Content="◀"
+                            Command="{Binding NavigateBackCommand}"
+                            Style="{StaticResource NavButtonStyle}"
+                            Margin="0,0,12,0"/>
+
+                    <TextBlock Text="{Binding SelectedDateText}"
+                               FontSize="18" FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0"/>
+
+                    <Button Content="▶"
+                            Command="{Binding NavigateForwardCommand}"
+                            Style="{StaticResource NavButtonStyle}"
+                            Margin="0,0,20,0"/>
+
+                    <Button Content="🔄 Обновить"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Background="#1565C0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ========== СТАТУС-БАР ВНИЗУ ========== -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="#E0E0E0"
+                    Padding="16,6"
+                    BorderBrush="#BDBDBD"
+                    BorderThickness="0,1,0,0">
+                <TextBlock Text="{Binding StatusMessage}"
+                           FontSize="12"
+                           Foreground="#616161"/>
+            </Border>
+
+            <!-- ========== ОСНОВНАЯ ОБЛАСТЬ — СПИСОК ФАЙЛОВ ========== -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          Padding="16">
+
+                <Grid>
+                    <!-- Заглушка "Файлы не найдены" -->
+                    <Border Background="White"
+                            CornerRadius="8"
+                            Padding="24"
+                            MinHeight="200"
+                            Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}">
+                        <StackPanel VerticalAlignment="Center"
+                                    HorizontalAlignment="Center">
+                            <TextBlock Text="📭"
+                                       FontSize="48"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,12"/>
+                            <TextBlock Text="Файлы для выбранной даты не найдены"
+                                       FontSize="16"
+                                       Foreground="#9E9E9E"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="Попробуйте выбрать другую дату или нажмите «Обновить»"
+                                       FontSize="13"
+                                       Foreground="#BDBDBD"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Список групп файлов -->
+                    <ItemsControl ItemsSource="{Binding FolderGroups}">
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="White"
+                                        CornerRadius="8"
+                                        Padding="16"
+                                        Margin="0,0,0,12">
+                                    <StackPanel>
+
+                                        <!-- Заголовок группы: имя папки -->
+                                        <Border Background="#F5F5F5"
+                                                CornerRadius="4"
+                                                Padding="12,8"
+                                                Margin="0,0,0,8">
+                                            <TextBlock Text="{Binding FolderName}"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#424242"/>
+                                        </Border>
+
+                                        <!-- Список файлов внутри группы -->
+                                        <ItemsControl ItemsSource="{Binding Files}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="#F0F0F0"
+                                                            BorderThickness="0,0,0,1"
+                                                            Padding="8,10">
+                                                        <DockPanel>
+
+                                                            <!-- Размер файла справа -->
+                                                            <TextBlock DockPanel.Dock="Right"
+                                                                       Text="{Binding FileSizeText}"
+                                                                       FontSize="12"
+                                                                       Foreground="#9E9E9E"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="12,0,0,0"/>
+
+                                                            <!-- Бейдж + имя файла -->
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        VerticalAlignment="Center">
+
+                                                                <!-- Цветной бейдж -->
+                                                                <Border CornerRadius="4"
+                                                                        Padding="8,3"
+                                                                        Margin="0,0,10,0"
+                                                                        MinWidth="90">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="#9E9E9E"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#8E24AA">
+                                                                                    <Setter Property="Background" Value="#8E24AA"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#E53935">
+                                                                                    <Setter Property="Background" Value="#E53935"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#43A047">
+                                                                                    <Setter Property="Background" Value="#43A047"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <TextBlock Text="{Binding TypeLabel}"
+                                                                               Foreground="White"
+                                                                               FontSize="11"
+                                                                               FontWeight="Bold"
+                                                                               HorizontalAlignment="Center"/>
+                                                                </Border>
+
+                                                                <!-- Имя файла -->
+                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                           FontSize="14"
+                                                                           Foreground="#212121"
+                                                                           VerticalAlignment="Center"/>
+
+                                                            </StackPanel>
+                                                        </DockPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+
+            </ScrollViewer>
+
+        </DockPanel>
+    </Border>
 </Window>
