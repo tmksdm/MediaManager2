@@ -57,6 +57,61 @@ public class FileDiscoveryService
     }
 
     /// <summary>
+    /// Быстрая проверка: есть ли хотя бы один .mp4 файл для указанной даты?
+    /// Используется для умной навигации (◀/▶) — не нужно строить полный список,
+    /// достаточно найти первый подходящий файл.
+    /// </summary>
+    /// <param name="searchFolder">Основная папка поиска</param>
+    /// <param name="additionalSearchFolder">Дополнительная папка поиска</param>
+    /// <param name="date">Дата для проверки</param>
+    /// <returns>true если есть хотя бы один файл для этой даты</returns>
+    public bool HasFilesForDate(
+        string searchFolder,
+        string additionalSearchFolder,
+        DateTime date)
+    {
+        // Проверяем основную папку
+        if (!string.IsNullOrWhiteSpace(searchFolder) && HasFilesInFolder(searchFolder, date))
+            return true;
+
+        // Проверяем дополнительную папку
+        if (!string.IsNullOrWhiteSpace(additionalSearchFolder) && HasFilesInFolder(additionalSearchFolder, date))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Есть ли в папке хотя бы один .mp4 файл для указанной даты?
+    /// Прекращает поиск сразу после первого найденного — это быстрее,
+    /// чем сканировать все файлы.
+    /// </summary>
+    private bool HasFilesInFolder(string folderPath, DateTime date)
+    {
+        try
+        {
+            if (!Directory.Exists(folderPath))
+                return false;
+
+            string[] mp4Files = Directory.GetFiles(
+                folderPath, "*.mp4", SearchOption.AllDirectories);
+
+            foreach (string filePath in mp4Files)
+            {
+                MediaFile? parsed = FileNameParser.TryParse(filePath, date.Year);
+                if (parsed != null && parsed.FileDate.Date == date.Date)
+                    return true; // Нашли первый — сразу выходим
+            }
+        }
+        catch
+        {
+            // Папка недоступна — пропускаем
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Сканировать одну папку (с подпапками) и вернуть найденные файлы для указанной даты.
     /// </summary>
     private List<MediaFile> ScanFolder(string folderPath, DateTime selectedDate)

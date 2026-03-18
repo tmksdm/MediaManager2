@@ -5,11 +5,6 @@ namespace MediaManager.Services;
 
 /// <summary>
 /// Строит пути назначения для копирования и выполняет само копирование.
-/// 
-/// Логика путей:
-///   ПАНОРАМА / ДАЙДЖЕСТ → Site2 (архив), Эфир, Кодер Site
-///   НОВОСТИ             → Хранилище новостей, Эфир 25к, Кодер 25к
-///   АРХИВ               → Сюжеты панорамы
 /// </summary>
 public class FileCopyService
 {
@@ -38,7 +33,6 @@ public class FileCopyService
 
     /// <summary>
     /// Возвращает список направлений копирования для данного файла.
-    /// Для ПАНОРАМА / ДАЙДЖЕСТ — efirTime используется в формировании имени в Эфир-папке.
     /// </summary>
     public List<CopyDestination> GetDestinations(
         MediaFile file, AppSettings settings, string? efirTime = null)
@@ -57,7 +51,7 @@ public class FileCopyService
             case MediaFileType.Panorama:
             case MediaFileType.Digest:
                 {
-                    // 1) Site2 архив: \\ARCHIVE2\Site2\{year}\{MM}_{MonthTitle}\{DD}\filename
+                    // 1) Site2 архив
                     string site2Dir = Path.Combine(settings.Site2Archive, year, $"{mm}_{monthTitle}", dd);
                     destinations.Add(new CopyDestination
                     {
@@ -65,8 +59,7 @@ public class FileCopyService
                         DestinationPath = Path.Combine(site2Dir, file.FileName)
                     });
 
-                    // 2) Эфир: \\Archive1\export\ПАНОРАМА\filename
-                    //    Если выбрано время эфира — подставляем его в имя файла
+                    // 2) Эфир
                     string efirFileName = file.FileName;
                     if (!string.IsNullOrEmpty(efirTime))
                     {
@@ -78,7 +71,7 @@ public class FileCopyService
                         DestinationPath = Path.Combine(settings.EfirPanorama, efirFileName)
                     });
 
-                    // 3) Кодер Site: \\NEWS-ENCODER\Coder_SITE\filename
+                    // 3) Кодер Site
                     destinations.Add(new CopyDestination
                     {
                         Label = "Кодер Site",
@@ -89,7 +82,7 @@ public class FileCopyService
 
             case MediaFileType.News:
                 {
-                    // 1) Хранилище: \\archive2\Архив_25К\НОВОСТИ\{year}\{MM}_{month_lower}\filename
+                    // 1) Хранилище
                     string newsDir = Path.Combine(settings.NewsStorage, year, $"{mm}_{monthLower}");
                     destinations.Add(new CopyDestination
                     {
@@ -98,7 +91,7 @@ public class FileCopyService
                         CopyPathToClipboard = true
                     });
 
-                    // 2) Эфир 25к: \\Archive2\25k\25k\НОВОСТИ\filename
+                    // 2) Эфир 25к
                     destinations.Add(new CopyDestination
                     {
                         Label = "Эфир 25к",
@@ -106,7 +99,7 @@ public class FileCopyService
                         CopyPathToClipboard = true
                     });
 
-                    // 3) Кодер 25к: \\News-encoder25k\25K\filename
+                    // 3) Кодер 25к
                     destinations.Add(new CopyDestination
                     {
                         Label = "Кодер 25к",
@@ -118,7 +111,7 @@ public class FileCopyService
 
             case MediaFileType.Archive:
                 {
-                    // 1) Сюжеты панорамы: \\Archive2\сюжеты панорамы 2\{year}\{MM}_{MONTH_UPPER}\filename
+                    // 1) Сюжеты панорамы
                     string archDir = Path.Combine(settings.ArchiveStories, year, $"{mm}_{monthUpper}");
                     destinations.Add(new CopyDestination
                     {
@@ -133,8 +126,7 @@ public class FileCopyService
     }
 
     /// <summary>
-    /// Проверяет, скопирован ли файл в указанное место
-    /// (совпадает размер и время модификации с точностью до 2 секунд).
+    /// Проверяет, скопирован ли файл в указанное место.
     /// </summary>
     public bool IsAlreadyCopied(string sourcePath, string destPath)
     {
@@ -152,15 +144,15 @@ public class FileCopyService
             TimeSpan timeDiff = (srcInfo.LastWriteTime - dstInfo.LastWriteTime).Duration();
             return timeDiff.TotalSeconds <= 2;
         }
-        catch
+        catch (Exception ex)
         {
+            LogService.Error($"Ошибка проверки копии: {sourcePath} → {destPath}", ex);
             return false;
         }
     }
 
     /// <summary>
     /// Копирует файл с отчётом о прогрессе. Создаёт папки назначения если их нет.
-    /// Возвращает true если копирование прошло успешно.
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
@@ -182,6 +174,8 @@ public class FileCopyService
             var sourceInfo = new FileInfo(sourcePath);
             long totalBytes = sourceInfo.Length;
             long copiedBytes = 0;
+
+            LogService.Info($"Копирование: {sourcePath} → {destPath} ({totalBytes} байт)");
 
             using var sourceStream = new FileStream(
                 sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
@@ -210,24 +204,25 @@ public class FileCopyService
             File.SetLastWriteTime(destPath, sourceInfo.LastWriteTime);
 
             progress?.Report(100.0);
+            LogService.Info($"Копирование завершено: {Path.GetFileName(destPath)}");
             return true;
         }
         catch (OperationCanceledException)
         {
+            LogService.Info($"Копирование отменено: {Path.GetFileName(sourcePath)}");
             // Удаляем недокопированный файл
             try { File.Delete(destPath); } catch { }
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            LogService.Error($"Ошибка копирования: {sourcePath} → {destPath}", ex);
             return false;
         }
     }
 
     /// <summary>
     /// Заменяет время (часы) в имени файла ПАНОРАМЫ / ДАЙДЖЕСТА.
-    /// ПАНОРАМА_18_03_18_сюжет.mp4  →  ПАНОРАМА_20_03_18_сюжет.mp4
-    /// ПАНОРАМА_ДАЙДЖЕСТ_00_03_18_сюжет.mp4  →  ПАНОРАМА_ДАЙДЖЕСТ_07_03_18_сюжет.mp4
     /// </summary>
     private static string ReplaceTimeInFileName(MediaFile file, string newTime)
     {
@@ -236,8 +231,6 @@ public class FileCopyService
 
         if (file.FileType == MediaFileType.Digest)
         {
-            // ПАНОРАМА_ДАЙДЖЕСТ_XX_...  — заменяем XX (позиция после второго _)
-            // Формат: ПАНОРАМА_ДАЙДЖЕСТ_00_MM_DD_...
             int idx = name.IndexOf("ДАЙДЖЕСТ_", StringComparison.OrdinalIgnoreCase);
             if (idx >= 0)
             {
@@ -250,7 +243,6 @@ public class FileCopyService
         }
         else if (file.FileType == MediaFileType.Panorama)
         {
-            // ПАНОРАМА_XX_MM_DD_... — заменяем XX (позиция после первого _)
             int idx = name.IndexOf("ПАНОРАМА_", StringComparison.OrdinalIgnoreCase);
             if (idx >= 0)
             {

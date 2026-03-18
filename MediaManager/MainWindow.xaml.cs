@@ -19,6 +19,47 @@ public partial class MainWindow : Window
 
         DataContext = _mainViewModel;
         settingsPanel.DataContext = settingsViewModel;
+
+        // Подписываемся на нажатия клавиш для всего окна
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
+    }
+
+    // --- Горячие клавиши ---
+
+    /// <summary>
+    /// Обработчик горячих клавиш для всего окна.
+    /// PreviewKeyDown срабатывает ДО того, как элемент управления обработает клавишу,
+    /// поэтому мы можем перехватить F5, Escape и т.д.
+    /// </summary>
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            // F5 — обновить список файлов
+            case Key.F5:
+                _mainViewModel.RefreshCommand.Execute(null);
+                e.Handled = true; // Говорим WPF: «мы обработали, дальше не передавай»
+                break;
+
+            // Escape — закрыть настройки (если открыты)
+            case Key.Escape:
+                if (_mainViewModel.IsSettingsVisible)
+                {
+                    _mainViewModel.IsSettingsVisible = false;
+                    e.Handled = true;
+                }
+                break;
+
+            // Enter — создать проект (только если курсор в поле ввода имени проекта)
+            case Key.Enter:
+                if (Keyboard.FocusedElement is TextBox textBox &&
+                    textBox.GetBindingExpression(TextBox.TextProperty)?.ResolvedSourcePropertyName == "ProjectName")
+                {
+                    _mainViewModel.CreateProjectCommand.Execute(null);
+                    e.Handled = true;
+                }
+                break;
+        }
     }
 
     // --- Кнопки копирования ---

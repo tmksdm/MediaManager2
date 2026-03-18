@@ -7,23 +7,13 @@ using MediaManager.Models;
 namespace MediaManager.Services;
 
 /// <summary>
-/// Загружает и сохраняет настройки в файл settings.json
-/// рядом с исполняемым файлом программы.
+/// Загружает и сохраняет настройки в файл settings.json.
 /// </summary>
 public static class SettingsService
 {
-    /// <summary>
-    /// Полный путь к файлу settings.json.
-    /// AppContext.BaseDirectory — папка, где лежит .exe нашей программы.
-    /// </summary>
     private static readonly string SettingsFilePath =
         Path.Combine(AppContext.BaseDirectory, "settings.json");
 
-    /// <summary>
-    /// Параметры сериализации JSON:
-    /// - WriteIndented: красивый отступ для читаемости файла
-    /// - Encoder: сохранять кириллицу как есть, а не как \u0410\u041F...
-    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -32,7 +22,6 @@ public static class SettingsService
 
     /// <summary>
     /// Загрузить настройки из файла.
-    /// Если файла нет — возвращает объект с настройками по умолчанию.
     /// </summary>
     public static AppSettings Load()
     {
@@ -44,15 +33,17 @@ public static class SettingsService
                 AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json);
                 if (loaded != null)
                 {
+                    LogService.Info("Настройки загружены из settings.json");
                     return loaded;
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Если файл повреждён — просто используем настройки по умолчанию
+            LogService.Error("Ошибка загрузки настроек", ex);
         }
 
+        LogService.Info("Используются настройки по умолчанию");
         return new AppSettings();
     }
 
@@ -66,9 +57,9 @@ public static class SettingsService
             string json = JsonSerializer.Serialize(settings, JsonOptions);
             File.WriteAllText(SettingsFilePath, json);
         }
-        catch
+        catch (Exception ex)
         {
-            // Ошибку сохранения пока игнорируем — позже добавим логирование
+            LogService.Error("Ошибка сохранения настроек", ex);
         }
     }
 }

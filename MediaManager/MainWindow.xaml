@@ -210,16 +210,19 @@
 
             <!-- === DATE NAVIGATION === -->
             <Border DockPanel.Dock="Top" Background="White" Padding="16,8"
-                    BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Button Content="◀" Command="{Binding NavigateBackCommand}"
-                            Style="{StaticResource NavButtonStyle}" Margin="0,0,12,0"/>
+                Style="{StaticResource NavButtonStyle}" Margin="0,0,12,0"/>
                     <TextBlock Text="{Binding SelectedDateText}" FontSize="18" FontWeight="SemiBold"
-                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                   VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Button Content="▶" Command="{Binding NavigateForwardCommand}"
-                            Style="{StaticResource NavButtonStyle}" Margin="0,0,20,0"/>
+                Style="{StaticResource NavButtonStyle}" Margin="0,0,12,0"/>
+                    <Button Content="Сегодня" Command="{Binding GoToTodayCommand}"
+                Style="{StaticResource ActionButtonStyle}" Background="#FF8F00"
+                Margin="0,0,20,0"/>
                     <Button Content="🔄 Обновить" Command="{Binding RefreshCommand}"
-                            Style="{StaticResource ActionButtonStyle}" Background="#1565C0"/>
+                Style="{StaticResource ActionButtonStyle}" Background="#1565C0"/>
                 </StackPanel>
             </Border>
 

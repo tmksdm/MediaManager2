@@ -20,8 +20,11 @@ public class MainViewModel : INotifyPropertyChanged
 
     private readonly FileDiscoveryService _discoveryService = new();
     private readonly FileCopyService _copyService = new();
-    private readonly ProjectCreationService _projectService = new();  // STAGE 5: сервис создания проектов
+    private readonly ProjectCreationService _projectService = new();
     private readonly SettingsViewModel _settingsViewModel;
+
+    /// <summary>Максимум дней для поиска ближайшей даты с файлами</summary>
+    private const int MaxSearchDays = 365;
 
     // --- Свойства ---
 
@@ -100,6 +103,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public RelayCommand NavigateBackCommand { get; }
     public RelayCommand NavigateForwardCommand { get; }
+    public RelayCommand GoToTodayCommand { get; }
     public RelayCommand RefreshCommand { get; }
     public RelayCommand ToggleSettingsCommand { get; }
     public RelayCommand CreateProjectCommand { get; }
@@ -108,13 +112,55 @@ public class MainViewModel : INotifyPropertyChanged
     {
         _settingsViewModel = settingsViewModel;
 
-        NavigateBackCommand = new RelayCommand(_ => SelectedDate = SelectedDate.AddDays(-1));
-        NavigateForwardCommand = new RelayCommand(_ => SelectedDate = SelectedDate.AddDays(1));
+        // Умная навигация: ищем ближайшую дату с файлами
+        NavigateBackCommand = new RelayCommand(_ => NavigateToNearestDate(-1));
+        NavigateForwardCommand = new RelayCommand(_ => NavigateToNearestDate(+1));
+        GoToTodayCommand = new RelayCommand(_ => SelectedDate = DateTime.Today);
         RefreshCommand = new RelayCommand(_ => ScanFiles());
         ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
         CreateProjectCommand = new RelayCommand(_ => ExecuteCreateProject());
 
         ScanFiles();
+    }
+
+    // --- Умная навигация по датам ---
+
+    /// <summary>
+    /// Ищет ближайшую дату с файлами в указанном направлении.
+    /// direction = -1 (назад) или +1 (вперёд).
+    /// 
+    /// Алгоритм:
+    /// 1. Начинаем с текущей даты ± 1 день
+    /// 2. Проверяем, есть ли файлы для этой даты
+    /// 3. Если есть — переключаемся на неё
+    /// 4. Если нет — сдвигаемся ещё на 1 день в том же направлении
+    /// 5. Максимум 365 попыток (чтобы не искать вечно)
+    /// </summary>
+    private void NavigateToNearestDate(int direction)
+    {
+        var settings = _settingsViewModel.GetSettings();
+        DateTime candidate = SelectedDate;
+
+        for (int i = 0; i < MaxSearchDays; i++)
+        {
+            candidate = candidate.AddDays(direction);
+
+            bool hasFiles = _discoveryService.HasFilesForDate(
+                settings.SearchFolder,
+                settings.AdditionalSearchFolder,
+                candidate);
+
+            if (hasFiles)
+            {
+                SelectedDate = candidate;
+                return;
+            }
+        }
+
+        // Не нашли файлов в пределах 365 дней — просто сдвигаемся на 1 день
+        // (чтобы кнопка не «залипла» и пользователь мог продолжить навигацию)
+        SelectedDate = SelectedDate.AddDays(direction);
+        StatusMessage = $"Файлы не найдены за {MaxSearchDays} дней";
     }
 
     // --- Создание проекта (STAGE 5) ---
