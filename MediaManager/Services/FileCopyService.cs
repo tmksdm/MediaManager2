@@ -175,8 +175,6 @@ public class FileCopyService
             long totalBytes = sourceInfo.Length;
             long copiedBytes = 0;
 
-            LogService.Info($"Копирование: {sourcePath} → {destPath} ({totalBytes} байт)");
-
             using var sourceStream = new FileStream(
                 sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
                 bufferSize, useAsync: true);
@@ -204,12 +202,10 @@ public class FileCopyService
             File.SetLastWriteTime(destPath, sourceInfo.LastWriteTime);
 
             progress?.Report(100.0);
-            LogService.Info($"Копирование завершено: {Path.GetFileName(destPath)}");
             return true;
         }
         catch (OperationCanceledException)
         {
-            LogService.Info($"Копирование отменено: {Path.GetFileName(sourcePath)}");
             // Удаляем недокопированный файл
             try { File.Delete(destPath); } catch { }
             return false;

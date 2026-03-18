@@ -3,10 +3,10 @@
 namespace MediaManager.Services;
 
 /// <summary>
-/// Простой сервис логирования в текстовый файл.
+/// Простой сервис логирования ошибок в текстовый файл.
 /// Файл log.txt создаётся рядом с .exe программы.
 /// 
-/// Каждая запись содержит дату/время, уровень (INFO/ERROR) и текст.
+/// Записывает только ошибки — чтобы лог не засорялся.
 /// Файл автоматически очищается, если превышает 5 МБ.
 /// </summary>
 public static class LogService
@@ -24,14 +24,6 @@ public static class LogService
     /// lock гарантирует, что записи не перемешаются.
     /// </summary>
     private static readonly object _lock = new();
-
-    /// <summary>
-    /// Записать информационное сообщение.
-    /// </summary>
-    public static void Info(string message)
-    {
-        Write("INFO", message);
-    }
 
     /// <summary>
     /// Записать ошибку (только текст).

@@ -41,8 +41,6 @@ public class ProjectCreationService
         string datePrefix = $"{mm}_{dd}";
         string datePrefixCompact = $"{mm}{dd}";
 
-        LogService.Info($"Создание проекта: {processedName}, дата: {dateFolderName}");
-
         // === 4. Создаём папку даты ===
         string dateFolderPath = Path.Combine(settings.ProjectBaseFolder, dateFolderName);
         try
@@ -65,7 +63,6 @@ public class ProjectCreationService
 
         if (Directory.Exists(projectFolderPath))
         {
-            LogService.Info($"Папка проекта уже существует: {projectFolderPath}");
             return new ProjectCreationResult
             {
                 Success = false,
@@ -97,7 +94,6 @@ public class ProjectCreationService
                     string templateFileName = $"{datePrefix}_{processedName}.prproj";
                     string templateDestPath = Path.Combine(projectFolderPath, templateFileName);
                     File.Copy(settings.SourceTemplateFile, templateDestPath);
-                    LogService.Info($"Шаблон скопирован: {templateDestPath}");
                 }
                 else
                 {
@@ -129,8 +125,6 @@ public class ProjectCreationService
         }
 
         // === 8. Возвращаем результат ===
-        LogService.Info($"Проект создан: {subFolderName} ({stubCount} файлов)");
-
         return new ProjectCreationResult
         {
             Success = true,

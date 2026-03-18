@@ -33,7 +33,6 @@ public static class SettingsService
                 AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json);
                 if (loaded != null)
                 {
-                    LogService.Info("Настройки загружены из settings.json");
                     return loaded;
                 }
             }
@@ -43,7 +42,6 @@ public static class SettingsService
             LogService.Error("Ошибка загрузки настроек", ex);
         }
 
-        LogService.Info("Используются настройки по умолчанию");
         return new AppSettings();
     }
 

@@ -44,7 +44,5 @@ public partial class App : Application
             LogService.Error("Необработанное исключение (Task)", args.Exception);
             args.SetObserved(); // Помечаем как обработанное
         };
-
-        LogService.Info("Приложение запущено");
     }
 }
