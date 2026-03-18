@@ -20,6 +20,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     private readonly FileDiscoveryService _discoveryService = new();
     private readonly FileCopyService _copyService = new();
+    private readonly ProjectCreationService _projectService = new();  // STAGE 5: сервис создания проектов
     private readonly SettingsViewModel _settingsViewModel;
 
     // --- Свойства ---
@@ -111,9 +112,37 @@ public class MainViewModel : INotifyPropertyChanged
         NavigateForwardCommand = new RelayCommand(_ => SelectedDate = SelectedDate.AddDays(1));
         RefreshCommand = new RelayCommand(_ => ScanFiles());
         ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
-        CreateProjectCommand = new RelayCommand(_ => { /* Этап 5 */ });
+        CreateProjectCommand = new RelayCommand(_ => ExecuteCreateProject());
 
         ScanFiles();
+    }
+
+    // --- Создание проекта (STAGE 5) ---
+
+    /// <summary>
+    /// Создаёт проект: папки, шаблон .prproj и заглушки .mp4.
+    /// После успешного создания — очищает поле ввода и обновляет список файлов.
+    /// </summary>
+    private void ExecuteCreateProject()
+    {
+        var settings = _settingsViewModel.GetSettings();
+
+        var result = _projectService.CreateProject(ProjectName, SelectedDate, settings);
+
+        if (result.Success)
+        {
+            StatusMessage = $"✅ {result.Message}";
+
+            // Очищаем поле ввода — проект создан, имя больше не нужно
+            ProjectName = string.Empty;
+
+            // Обновляем список файлов — новые заглушки должны появиться
+            ScanFiles();
+        }
+        else
+        {
+            StatusMessage = $"❌ {result.Message}";
+        }
     }
 
     // --- Копирование ---
