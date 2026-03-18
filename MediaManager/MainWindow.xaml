@@ -4,12 +4,13 @@
         xmlns:views="clr-namespace:MediaManager.Views"
         x:Name="mainWindow"
         Title="Медиа-менеджер"
+        Icon="app.ico"
         MinWidth="1250" MinHeight="600"
         Width="1250" Height="850"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
-        AllowsTransparency="False"
-        Background="#F5F5F5">
+        AllowsTransparency="True"
+        Background="Transparent">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -162,7 +163,7 @@
 
     </Window.Resources>
 
-    <Border BorderBrush="#0D47A1" BorderThickness="1">
+    <Border BorderBrush="#0D47A1" BorderThickness="1" Background="#F5F5F5">
         <DockPanel>
 
             <!-- === TITLE BAR === -->

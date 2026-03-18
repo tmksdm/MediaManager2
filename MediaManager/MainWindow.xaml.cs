@@ -1,6 +1,8 @@
-﻿using System.Windows;
+﻿using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using MediaManager.Models;
 using MediaManager.ViewModels;
 
@@ -22,9 +24,85 @@ public partial class MainWindow : Window
 
         // Подписываемся на нажатия клавиш для всего окна
         PreviewKeyDown += MainWindow_PreviewKeyDown;
+
+        // Подключаем обработку ресайза через WinAPI после загрузки окна
+        SourceInitialized += MainWindow_SourceInitialized;
     }
 
-    // --- Горячие клавиши ---
+    // ======================================================
+    // === Ресайз окна через WinAPI (замена системной рамки) ===
+    // ======================================================
+
+    // Толщина невидимой зоны захвата по краям окна (в пикселях)
+    private const int ResizeBorderWidth = 6;
+
+    // Коды зон окна для Windows
+    private const int HTLEFT = 10;
+    private const int HTRIGHT = 11;
+    private const int HTTOP = 12;
+    private const int HTTOPLEFT = 13;
+    private const int HTTOPRIGHT = 14;
+    private const int HTBOTTOM = 15;
+    private const int HTBOTTOMLEFT = 16;
+    private const int HTBOTTOMRIGHT = 17;
+
+    // Сообщение Windows: «определи, в какой зоне окна находится курсор»
+    private const int WM_NCHITTEST = 0x0084;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>
+    /// Подключаемся к системным сообщениям окна, чтобы перехватить WM_NCHITTEST.
+    /// Это позволяет Windows знать, что края окна — это зоны для ресайза.
+    /// </summary>
+    private void MainWindow_SourceInitialized(object? sender, EventArgs e)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        var source = HwndSource.FromHwnd(handle);
+        source?.AddHook(WndProc);
+    }
+
+    /// <summary>
+    /// Обработчик системных сообщений окна.
+    /// Когда Windows спрашивает «где мышь?» (WM_NCHITTEST),
+    /// мы проверяем — если мышь у края окна, говорим «это зона ресайза».
+    /// </summary>
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_NCHITTEST && WindowState != WindowState.Maximized)
+        {
+            // Получаем координаты мыши относительно окна
+            var point = PointFromScreen(new Point(
+                (short)(lParam.ToInt32() & 0xFFFF),
+                (short)(lParam.ToInt32() >> 16)));
+
+            double w = ActualWidth;
+            double h = ActualHeight;
+            int border = ResizeBorderWidth;
+
+            // Определяем зону: углы и стороны
+            bool left = point.X < border;
+            bool right = point.X > w - border;
+            bool top = point.Y < border;
+            bool bottom = point.Y > h - border;
+
+            if (top && left) { handled = true; return new IntPtr(HTTOPLEFT); }
+            if (top && right) { handled = true; return new IntPtr(HTTOPRIGHT); }
+            if (bottom && left) { handled = true; return new IntPtr(HTBOTTOMLEFT); }
+            if (bottom && right) { handled = true; return new IntPtr(HTBOTTOMRIGHT); }
+            if (left) { handled = true; return new IntPtr(HTLEFT); }
+            if (right) { handled = true; return new IntPtr(HTRIGHT); }
+            if (top) { handled = true; return new IntPtr(HTTOP); }
+            if (bottom) { handled = true; return new IntPtr(HTBOTTOM); }
+        }
+
+        return IntPtr.Zero;
+    }
+
+    // ======================================================
+    // === Горячие клавиши ===
+    // ======================================================
 
     /// <summary>
     /// Обработчик горячих клавиш для всего окна.
@@ -62,7 +140,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // --- Кнопки копирования ---
+    // ======================================================
+    // === Кнопки копирования ===
+    // ======================================================
 
     /// <summary>
     /// Обработчик нажатия любой кнопки копирования.
@@ -83,7 +163,9 @@ public partial class MainWindow : Window
         await _mainViewModel.ExecuteCopyAsync(file, destinationKey);
     }
 
-    // --- Title bar ---
+    // ======================================================
+    // === Title bar ===
+    // ======================================================
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
