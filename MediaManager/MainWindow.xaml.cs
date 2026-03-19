@@ -53,6 +53,17 @@ public partial class MainWindow : Window
     private const int WM_NCHITTEST = 0x0084;
 
     [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
     /// <summary>
@@ -170,22 +181,45 @@ public partial class MainWindow : Window
     // === Title bar ===
     // ======================================================
 
+    /// <summary>
+    /// Перетаскивание окна за title bar.
+    /// Двойной клик — развернуть/свернуть.
+    /// Drag из Maximized — окно переходит в Normal и следует за мышью.
+    /// GetCursorPos (Win32) используется вместо Mouse.GetPosition(null),
+    /// чтобы корректно работать на multi-monitor с разным DPI.
+    /// Проверка e.ButtonState перед DragMove() предотвращает InvalidOperationException,
+    /// если пользователь успел отпустить кнопку мыши.
+    /// </summary>
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
         {
             ToggleMaximize();
+            return;
         }
-        else
+
+        if (WindowState == WindowState.Maximized)
         {
-            if (WindowState == WindowState.Maximized)
-            {
-                var point = e.GetPosition(this);
-                double proportionX = point.X / ActualWidth;
-                WindowState = WindowState.Normal;
-                Left = Mouse.GetPosition(null).X - (Width * proportionX);
-                Top = 0;
-            }
+            // Запоминаем пропорцию клика по ширине развёрнутого окна
+            var point = e.GetPosition(this);
+            double proportionX = point.X / ActualWidth;
+
+            // Получаем абсолютные экранные координаты мыши через Win32
+            // (надёжно работает на multi-monitor с разным DPI)
+            GetCursorPos(out POINT cursorPos);
+
+            // Переводим окно в Normal
+            WindowState = WindowState.Normal;
+
+            // Позиционируем окно так, чтобы курсор остался на прежнем месте title bar
+            Left = cursorPos.X - (Width * proportionX);
+            Top = cursorPos.Y - point.Y;
+        }
+
+        // Проверяем, что кнопка мыши всё ещё нажата —
+        // иначе DragMove() бросит InvalidOperationException
+        if (e.ButtonState == MouseButtonState.Pressed)
+        {
             DragMove();
         }
     }
