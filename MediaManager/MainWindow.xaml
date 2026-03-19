@@ -5,7 +5,7 @@
         x:Name="mainWindow"
         Title="Медиа-менеджер"
         Icon="app.ico"
-        MinWidth="1250" MinHeight="600"
+        MinWidth="1050" MinHeight="600"
         Width="1250" Height="850"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
@@ -312,16 +312,30 @@
                                 <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                                     <StackPanel>
                                         <!-- Заголовок папки -->
-                                        <Border Background="#F5F5F5" CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+                                        <Border Background="White" CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
                                             <TextBlock Text="{Binding FolderName}" FontSize="14"
                                                        FontWeight="SemiBold" Foreground="#424242"/>
                                         </Border>
 
-                                        <!-- Файлы -->
-                                        <ItemsControl ItemsSource="{Binding Files}">
+                                        <!-- Файлы (AlternationCount=2 для «зебры») -->
+                                        <ItemsControl ItemsSource="{Binding Files}" AlternationCount="2">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border BorderBrush="#F0F0F0" BorderThickness="0,0,0,1" Padding="8,6">
+                                                        <!-- Фон «зебры»: чётные строки прозрачные, нечётные — чуть темнее -->
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="Transparent"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter},
+                                                                                                   Path=(ItemsControl.AlternationIndex)}"
+                                                                                 Value="1">
+                                                                        <Setter Property="Background" Value="#F7F5FA"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+
                                                         <DockPanel>
                                                             <!-- Кнопки копирования — справа -->
                                                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">

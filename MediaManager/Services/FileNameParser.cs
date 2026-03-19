@@ -132,8 +132,11 @@ public static class FileNameParser
             return null; // Невалидная дата (например, 30 февраля)
         }
 
-        // DisplayName — просто имя файла без расширения .mp4
-        string displayName = Path.GetFileNameWithoutExtension(fileName);
+        // DisplayName — имя файла без префикса (тип+дата) и без расширения .mp4
+        // match.Value содержит распознанный префикс (например "ПАНОРАМА_18_03_19_")
+        // Убираем его, чтобы осталось только название сюжета
+        string nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+        string displayName = nameWithoutExtension.Substring(match.Value.Length);
 
         // Получаем размер файла
         long fileSize = 0;
