@@ -1,11 +1,12 @@
-﻿using System.Collections.ObjectModel;
+﻿using MediaManager.Models;
+using MediaManager.Services;
+using MediaManager.Views;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using MediaManager.Models;
-using MediaManager.Services;
-using MediaManager.Views;
+using System.Windows.Input;
 
 namespace MediaManager.ViewModels;
 
@@ -39,7 +40,8 @@ public class MainViewModel : INotifyPropertyChanged
                 _selectedDate = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedDateText));
-                ScanFiles();
+                // Запускаем асинхронное сканирование (async void — огонь и забудь)
+                ScanFilesAsync();
             }
         }
     }
@@ -108,6 +110,28 @@ public class MainViewModel : INotifyPropertyChanged
     {
         get => _isNavigating;
         set { if (_isNavigating != value) { _isNavigating = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>
+    /// Идёт ли сканирование файлов.
+    /// Пока true — кнопка «Обновить» неактивна, в статусе «Сканирование...»
+    /// </summary>
+    private bool _isScanning = false;
+    public bool IsScanning
+    {
+        get => _isScanning;
+        set
+        {
+            if (_isScanning != value)
+            {
+                _isScanning = value;
+                OnPropertyChanged();
+                // Принудительно обновляем состояние всех команд (CanExecute).
+                // Без этого кнопка «Обновить» остаётся бледной после сканирования,
+                // потому что WPF не сразу перепроверяет CanExecute.
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
     }
 
     // ======================================================
@@ -187,7 +211,9 @@ public class MainViewModel : INotifyPropertyChanged
             _ => !IsNavigating);  // Кнопка неактивна пока идёт поиск
 
         GoToTodayCommand = new RelayCommand(_ => SelectedDate = DateTime.Today);
-        RefreshCommand = new RelayCommand(_ => ScanFiles());
+        RefreshCommand = new RelayCommand(
+            _ => ScanFilesAsync(),
+            _ => !IsScanning);  // Кнопка неактивна пока идёт сканирование
         ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
         CreateProjectCommand = new RelayCommand(_ => ExecuteCreateProject());
 
@@ -196,7 +222,8 @@ public class MainViewModel : INotifyPropertyChanged
         SelectProjectCommand = new RelayCommand(param => SelectProject(param as string));
         CopyExportNameCommand = new RelayCommand(param => CopyExportName(param as string));
 
-        ScanFiles();
+        // Первое сканирование при запуске
+        ScanFilesAsync();
 
         // Загружаем список проектов за сегодня при старте
         RefreshTodayProjects();
@@ -287,7 +314,7 @@ public class MainViewModel : INotifyPropertyChanged
             // Обновляем список проектов — появится новый
             RefreshTodayProjects();
 
-            ScanFiles();
+            ScanFilesAsync();
         }
         else
         {
@@ -477,70 +504,118 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    // --- Сканирование ---
+    // ======================================================
+    // === Сканирование (асинхронное) ===
+    // ======================================================
 
-    private void ScanFiles()
+    /// <summary>
+    /// Асинхронное сканирование файлов.
+    /// Тяжёлые операции (обход файловой системы + проверка статусов копирования
+    /// по сетевым путям) выполняются в фоновом потоке — UI не зависает.
+    /// </summary>
+    private async void ScanFilesAsync()
     {
+        // Защита от повторного запуска
+        if (IsScanning)
+            return;
+
+        IsScanning = true;
+        StatusMessage = "Сканирование...";
+
+        AppSettings settings = _settingsViewModel.GetSettings();
+        // Запоминаем дату ДО await — если пользователь успеет переключить дату,
+        // результат старого сканирования не затрёт новый
+        DateTime scanDate = SelectedDate;
+
         try
         {
-            StatusMessage = "Сканирование...";
+            // === Фоновый поток: обнаружение файлов ===
+            List<FolderGroup> groups = await Task.Run(() =>
+                _discoveryService.DiscoverFiles(
+                    settings.SearchFolder,
+                    settings.AdditionalSearchFolder,
+                    scanDate));
 
-            AppSettings settings = _settingsViewModel.GetSettings();
+            // Если за время сканирования пользователь переключил дату —
+            // результат уже не актуален, выбрасываем
+            if (scanDate != SelectedDate)
+                return;
 
-            List<FolderGroup> groups = _discoveryService.DiscoverFiles(
-                settings.SearchFolder,
-                settings.AdditionalSearchFolder,
-                SelectedDate);
-
+            // === UI-поток: обновляем список (привязка к интерфейсу) ===
             FolderGroups = new ObservableCollection<FolderGroup>(groups);
 
             TotalFilesFound = 0;
             foreach (var group in groups)
                 TotalFilesFound += group.Files.Count;
 
-            // Проверяем статус копирования для каждого файла
-            CheckCopyStatuses(settings);
-
             OnPropertyChanged(nameof(IsEmpty));
 
             if (TotalFilesFound == 0)
-                StatusMessage = $"Файлы для {SelectedDateText} не найдены";
+            {
+                StatusMessage = $"Файлы для {scanDate:dd.MM.yyyy} не найдены";
+            }
             else
             {
                 string filesWord = GetFilesWord(TotalFilesFound);
                 int groupCount = groups.Count;
                 string foldersWord = GetFoldersWord(groupCount);
                 StatusMessage = $"Найдено {TotalFilesFound} {filesWord} в {groupCount} {foldersWord}";
+
+                // === Фоновый поток: проверка статусов копирования ===
+                // Это самая медленная часть — обращения к сетевым дискам
+                // по каждому файлу × каждое направление.
+                // Собираем данные для фонового потока заранее.
+                var fileDestinations = new List<(MediaFile File, List<FileCopyService.CopyDestination> Destinations)>();
+                foreach (var group in groups)
+                {
+                    foreach (var file in group.Files)
+                    {
+                        var destinations = _copyService.GetDestinations(file, settings);
+                        fileDestinations.Add((file, destinations));
+                    }
+                }
+
+                // Проверяем все статусы в фоновом потоке
+                var copyResults = await Task.Run(() =>
+                {
+                    var results = new List<(MediaFile File, string Label, bool Copied)>();
+                    foreach (var (file, destinations) in fileDestinations)
+                    {
+                        foreach (var dest in destinations)
+                        {
+                            bool copied = _copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath);
+                            results.Add((file, dest.Label, copied));
+                        }
+                    }
+                    return results;
+                });
+
+                // Снова проверяем актуальность даты
+                if (scanDate != SelectedDate)
+                    return;
+
+                // === UI-поток: ставим флаги (обновляют привязки кнопок) ===
+                foreach (var (file, label, copied) in copyResults)
+                {
+                    SetCopiedFlag(file, label, copied);
+                }
             }
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Ошибка сканирования: {ex.Message}";
-            FolderGroups = new ObservableCollection<FolderGroup>();
-            TotalFilesFound = 0;
-            OnPropertyChanged(nameof(IsEmpty));
-        }
-    }
-
-    /// <summary>
-    /// Проверяет для каждого файла, скопирован ли он уже по каждому направлению.
-    /// Устанавливает флаги IsCopiedToXxx — от них зависит цвет кнопок.
-    /// </summary>
-    private void CheckCopyStatuses(AppSettings settings)
-    {
-        foreach (var group in FolderGroups)
-        {
-            foreach (var file in group.Files)
+            // Показываем ошибку только если дата не сменилась
+            if (scanDate == SelectedDate)
             {
-                // Получаем все направления для файла (без efirTime — для проверки Эфира не критично)
-                var destinations = _copyService.GetDestinations(file, settings);
-
-                foreach (var dest in destinations)
-                {
-                    bool copied = _copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath);
-                    SetCopiedFlag(file, dest.Label, copied);
-                }
+                StatusMessage = $"Ошибка сканирования: {ex.Message}";
+                FolderGroups = new ObservableCollection<FolderGroup>();
+                TotalFilesFound = 0;
+                OnPropertyChanged(nameof(IsEmpty));
+                LogService.Error("Ошибка сканирования файлов", ex);
             }
+        }
+        finally
+        {
+            IsScanning = false;
         }
     }
 
