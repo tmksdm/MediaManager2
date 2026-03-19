@@ -153,6 +153,8 @@ public class FileCopyService
 
     /// <summary>
     /// Копирует файл с отчётом о прогрессе. Создаёт папки назначения если их нет.
+    /// Прогресс сообщается не чаще 20 раз в секунду, чтобы не забивать UI-поток
+    /// и не блокировать обработку кликов (например, кнопки «Отмена»).
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
@@ -175,6 +177,12 @@ public class FileCopyService
             long totalBytes = sourceInfo.Length;
             long copiedBytes = 0;
 
+            // Таймер для throttle прогресса: не чаще 20 раз в секунду (50 мс).
+            // Без этого Progress<T>.Report() забивает UI-поток сотнями сообщений,
+            // и клики по кнопке «Отмена» не успевают обработаться.
+            var lastReport = DateTime.UtcNow;
+            const int reportIntervalMs = 50;
+
             // Копируем содержимое файла
             using (var sourceStream = new FileStream(
                 sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
@@ -192,9 +200,15 @@ public class FileCopyService
 
                     copiedBytes += bytesRead;
 
-                    if (totalBytes > 0)
+                    // Сообщаем прогресс не чаще чем раз в 50 мс
+                    if (totalBytes > 0 && progress != null)
                     {
-                        progress?.Report((double)copiedBytes / totalBytes * 100.0);
+                        var now = DateTime.UtcNow;
+                        if ((now - lastReport).TotalMilliseconds >= reportIntervalMs)
+                        {
+                            progress.Report((double)copiedBytes / totalBytes * 100.0);
+                            lastReport = now;
+                        }
                     }
                 }
             }

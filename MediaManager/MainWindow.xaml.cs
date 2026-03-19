@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using MediaManager.Models;
 using MediaManager.ViewModels;
 
@@ -40,6 +41,7 @@ public partial class MainWindow : Window
     private const int ResizeBorderWidth = 6;
 
     // Коды зон окна для Windows
+    private const int HTCLIENT = 1;
     private const int HTLEFT = 10;
     private const int HTRIGHT = 11;
     private const int HTTOP = 12;
@@ -81,25 +83,42 @@ public partial class MainWindow : Window
     /// Обработчик системных сообщений окна.
     /// Когда Windows спрашивает «где мышь?» (WM_NCHITTEST),
     /// мы проверяем — если мышь у края окна, говорим «это зона ресайза».
+    ///
+    /// Координаты из lParam — в физических пикселях экрана.
+    /// Сравниваем с размером окна тоже в физических пикселях (через DPI-коэффициент),
+    /// чтобы зона ресайза была ровно ResizeBorderWidth пикселей независимо от масштаба.
     /// </summary>
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (msg == WM_NCHITTEST && WindowState != WindowState.Maximized)
         {
-            // Получаем координаты мыши относительно окна
-            var point = PointFromScreen(new Point(
-                (short)(lParam.ToInt32() & 0xFFFF),
-                (short)(lParam.ToInt32() >> 16)));
+            // Извлекаем экранные координаты мыши (физические пиксели)
+            long lp = lParam.ToInt64();
+            int screenX = (int)(short)(lp & 0xFFFF);
+            int screenY = (int)(short)((lp >> 16) & 0xFFFF);
 
-            double w = ActualWidth;
-            double h = ActualHeight;
-            int border = ResizeBorderWidth;
+            // Получаем позицию и размер окна в физических пикселях через DPI
+            double dpiScale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            double winLeft = Left * dpiScale;
+            double winTop = Top * dpiScale;
+            double winWidth = ActualWidth * dpiScale;
+            double winHeight = ActualHeight * dpiScale;
+
+            // Координаты мыши относительно окна (в физических пикселях)
+            double relX = screenX - winLeft;
+            double relY = screenY - winTop;
+
+            // Если координаты за пределами окна — не перехватываем
+            if (relX < 0 || relY < 0 || relX > winWidth || relY > winHeight)
+                return IntPtr.Zero;
+
+            int border = ResizeBorderWidth; // уже в физических пикселях
 
             // Определяем зону: углы и стороны
-            bool left = point.X < border;
-            bool right = point.X > w - border;
-            bool top = point.Y < border;
-            bool bottom = point.Y > h - border;
+            bool left = relX < border;
+            bool right = relX > winWidth - border;
+            bool top = relY < border;
+            bool bottom = relY > winHeight - border;
 
             if (top && left) { handled = true; return new IntPtr(HTTOPLEFT); }
             if (top && right) { handled = true; return new IntPtr(HTTOPRIGHT); }
@@ -175,6 +194,20 @@ public partial class MainWindow : Window
             return;
 
         await _mainViewModel.ExecuteCopyAsync(file, destinationKey);
+    }
+
+    // ======================================================
+    // === Кнопка отмены копирования ===
+    // ======================================================
+
+    /// <summary>
+    /// Click handler для кнопки «Отмена» в статусной строке.
+    /// Используем Click вместо Command — надёжнее работает
+    /// в borderless-окне с AllowsTransparency.
+    /// </summary>
+    private void CancelCopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        _mainViewModel.CancelCopy();
     }
 
     // ======================================================

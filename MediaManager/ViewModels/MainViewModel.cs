@@ -27,6 +27,12 @@ public class MainViewModel : INotifyPropertyChanged
     /// <summary>Максимум дней для поиска ближайшей даты с файлами</summary>
     private const int MaxSearchDays = 365;
 
+    /// <summary>
+    /// Токен отмены текущего копирования.
+    /// Создаётся перед каждым копированием, отменяется по кнопке «Отмена».
+    /// </summary>
+    private CancellationTokenSource? _copyCts;
+
     // --- Свойства ---
 
     private DateTime _selectedDate = DateTime.Today;
@@ -90,7 +96,18 @@ public class MainViewModel : INotifyPropertyChanged
     public bool IsCopying
     {
         get => _isCopying;
-        set { if (_isCopying != value) { _isCopying = value; OnPropertyChanged(); } }
+        set
+        {
+            if (_isCopying != value)
+            {
+                _isCopying = value;
+                OnPropertyChanged();
+                // Принудительно обновляем CanExecute всех команд —
+                // без этого кнопка «Отмена» остаётся неактивной,
+                // потому что WPF не знает, что нужно перепроверить CancelCopyCommand.
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
     }
 
     /// <summary>Прогресс копирования (0–100)</summary>
@@ -197,6 +214,7 @@ public class MainViewModel : INotifyPropertyChanged
     public RelayCommand ToggleProjectListCommand { get; }
     public RelayCommand SelectProjectCommand { get; }
     public RelayCommand CopyExportNameCommand { get; }
+    public RelayCommand CancelCopyCommand { get; }
 
     public MainViewModel(SettingsViewModel settingsViewModel)
     {
@@ -221,6 +239,9 @@ public class MainViewModel : INotifyPropertyChanged
         ToggleProjectListCommand = new RelayCommand(_ => ToggleProjectList());
         SelectProjectCommand = new RelayCommand(param => SelectProject(param as string));
         CopyExportNameCommand = new RelayCommand(param => CopyExportName(param as string));
+
+        // Команда отмены копирования — активна только пока идёт копирование
+        CancelCopyCommand = new RelayCommand(_ => CancelCopy(), _ => IsCopying);
 
         // Первое сканирование при запуске
         ScanFilesAsync();
@@ -397,6 +418,20 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     // ======================================================
+    // === Отмена копирования ===
+    // ======================================================
+
+    /// <summary>
+    /// Отменяет текущее копирование.
+    /// CancellationTokenSource.Cancel() сигнализирует токену —
+    /// CopyFileAsync прервёт чтение/запись и удалит недокопированный файл.
+    /// </summary>
+    public void CancelCopy()
+    {
+        _copyCts?.Cancel();
+    }
+
+    // ======================================================
     // === Копирование файлов ===
     // ======================================================
 
@@ -467,6 +502,9 @@ public class MainViewModel : INotifyPropertyChanged
             }
         }
 
+        // Создаём токен отмены для этого копирования
+        _copyCts = new CancellationTokenSource();
+
         // Копируем
         IsCopying = true;
         CopyProgress = 0;
@@ -478,7 +516,13 @@ public class MainViewModel : INotifyPropertyChanged
         });
 
         bool success = await _copyService.CopyFileAsync(
-            file.FullPath, dest.DestinationPath, progress);
+            file.FullPath, dest.DestinationPath, progress, _copyCts.Token);
+
+        bool wasCancelled = _copyCts.IsCancellationRequested;
+
+        // Освобождаем токен
+        _copyCts.Dispose();
+        _copyCts = null;
 
         IsCopying = false;
         CopyProgress = 0;
@@ -497,6 +541,10 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 StatusMessage = $"✅ Скопировано: {file.FileName} → {destinationKey}";
             }
+        }
+        else if (wasCancelled)
+        {
+            StatusMessage = $"⛔ Копирование отменено: {file.FileName}";
         }
         else
         {

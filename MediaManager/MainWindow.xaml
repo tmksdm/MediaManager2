@@ -483,17 +483,43 @@
 
             <!-- === STATUS BAR + PROGRESS === -->
             <Border DockPanel.Dock="Bottom" Background="#E0E0E0" Padding="16,6"
-                    BorderBrush="#BDBDBD" BorderThickness="0,1,0,0">
+        BorderBrush="#BDBDBD" BorderThickness="0,1,0,0">
                 <DockPanel>
+                    <!-- Кнопка отмены — Click handler вместо Command (надёжнее в borderless-окне) -->
+                    <Button DockPanel.Dock="Right"
+                Content="✕ Отмена"
+                Click="CancelCopyButton_Click"
+                FontSize="12" Cursor="Hand"
+                Padding="10,0" Height="22"
+                Margin="6,0,0,0"
+                Foreground="White" Background="#E53935" BorderThickness="0"
+                Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                            CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#C62828"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter Property="Background" Value="#B71C1C"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                     <ProgressBar DockPanel.Dock="Right"
-                                 Width="200" Height="16"
-                                 Minimum="0" Maximum="100"
-                                 Value="{Binding CopyProgress}"
-                                 Margin="12,0,0,0"
-                                 Foreground="#1565C0"
-                                 Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
+                     Width="200" Height="16"
+                     Minimum="0" Maximum="100"
+                     Value="{Binding CopyProgress}"
+                     Margin="12,0,0,0"
+                     Foreground="#1565C0"
+                     Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#616161"
-                               VerticalAlignment="Center"/>
+                   VerticalAlignment="Center"/>
                 </DockPanel>
             </Border>
 
