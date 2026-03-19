@@ -125,17 +125,6 @@ public class MainViewModel : INotifyPropertyChanged
 
     // --- Умная навигация по датам ---
 
-    /// <summary>
-    /// Ищет ближайшую дату с файлами в указанном направлении.
-    /// direction = -1 (назад) или +1 (вперёд).
-    /// 
-    /// Алгоритм:
-    /// 1. Начинаем с текущей даты ± 1 день
-    /// 2. Проверяем, есть ли файлы для этой даты
-    /// 3. Если есть — переключаемся на неё
-    /// 4. Если нет — сдвигаемся ещё на 1 день в том же направлении
-    /// 5. Максимум 365 попыток (чтобы не искать вечно)
-    /// </summary>
     private void NavigateToNearestDate(int direction)
     {
         var settings = _settingsViewModel.GetSettings();
@@ -157,18 +146,12 @@ public class MainViewModel : INotifyPropertyChanged
             }
         }
 
-        // Не нашли файлов в пределах 365 дней — просто сдвигаемся на 1 день
-        // (чтобы кнопка не «залипла» и пользователь мог продолжить навигацию)
         SelectedDate = SelectedDate.AddDays(direction);
         StatusMessage = $"Файлы не найдены за {MaxSearchDays} дней";
     }
 
-    // --- Создание проекта (STAGE 5) ---
+    // --- Создание проекта ---
 
-    /// <summary>
-    /// Создаёт проект: папки, шаблон .prproj и заглушки .mp4.
-    /// После успешного создания — очищает поле ввода и обновляет список файлов.
-    /// </summary>
     private void ExecuteCreateProject()
     {
         var settings = _settingsViewModel.GetSettings();
@@ -178,11 +161,7 @@ public class MainViewModel : INotifyPropertyChanged
         if (result.Success)
         {
             StatusMessage = $"✅ {result.Message}";
-
-            // Очищаем поле ввода — проект создан, имя больше не нужно
             ProjectName = string.Empty;
-
-            // Обновляем список файлов — новые заглушки должны появиться
             ScanFiles();
         }
         else
@@ -193,9 +172,6 @@ public class MainViewModel : INotifyPropertyChanged
 
     // --- Копирование ---
 
-    /// <summary>
-    /// Вызывается из code-behind. Параметры: файл и ключ направления.
-    /// </summary>
     public async Task ExecuteCopyAsync(MediaFile file, string destinationKey)
     {
         if (IsCopying)
@@ -281,6 +257,9 @@ public class MainViewModel : INotifyPropertyChanged
 
         if (success)
         {
+            // Обновляем флаг «скопировано» — кнопка станет залитой
+            SetCopiedFlag(file, destinationKey, true);
+
             if (dest.CopyPathToClipboard)
             {
                 Clipboard.SetText(dest.DestinationPath);
@@ -318,6 +297,9 @@ public class MainViewModel : INotifyPropertyChanged
             foreach (var group in groups)
                 TotalFilesFound += group.Files.Count;
 
+            // Проверяем статус копирования для каждого файла
+            CheckCopyStatuses(settings);
+
             OnPropertyChanged(nameof(IsEmpty));
 
             if (TotalFilesFound == 0)
@@ -336,6 +318,45 @@ public class MainViewModel : INotifyPropertyChanged
             FolderGroups = new ObservableCollection<FolderGroup>();
             TotalFilesFound = 0;
             OnPropertyChanged(nameof(IsEmpty));
+        }
+    }
+
+    /// <summary>
+    /// Проверяет для каждого файла, скопирован ли он уже по каждому направлению.
+    /// Устанавливает флаги IsCopiedToXxx — от них зависит цвет кнопок.
+    /// </summary>
+    private void CheckCopyStatuses(AppSettings settings)
+    {
+        foreach (var group in FolderGroups)
+        {
+            foreach (var file in group.Files)
+            {
+                // Получаем все направления для файла (без efirTime — для проверки Эфира не критично)
+                var destinations = _copyService.GetDestinations(file, settings);
+
+                foreach (var dest in destinations)
+                {
+                    bool copied = _copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath);
+                    SetCopiedFlag(file, dest.Label, copied);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Устанавливает нужный флаг IsCopiedToXxx по ключу направления.
+    /// </summary>
+    private static void SetCopiedFlag(MediaFile file, string destinationKey, bool value)
+    {
+        switch (destinationKey)
+        {
+            case "Site2 (архив)": file.IsCopiedToSite2 = value; break;
+            case "Эфир": file.IsCopiedToEfir = value; break;
+            case "Кодер Site": file.IsCopiedToCoder = value; break;
+            case "Хранилище": file.IsCopiedToStorage = value; break;
+            case "Эфир 25к": file.IsCopiedToEfir25 = value; break;
+            case "Кодер 25к": file.IsCopiedToCoder25 = value; break;
+            case "Сюжеты": file.IsCopiedToArchive = value; break;
         }
     }
 

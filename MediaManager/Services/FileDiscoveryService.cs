@@ -50,7 +50,8 @@ public class FileDiscoveryService
                     g.OrderBy(f => f.FileType)         // Сортировка: сначала по типу
                      .ThenBy(f => f.FileName))         // потом по имени файла
             })
-            .OrderBy(g => g.FolderName) // Группы — по алфавиту имён папок
+            .OrderByDescending(g => g.FolderPath.Count(c => c == Path.DirectorySeparatorChar)) // Вложенные папки выше
+            .ThenBy(g => g.FolderName) // При одинаковой глубине — по алфавиту
             .ToList();
 
         return groups;

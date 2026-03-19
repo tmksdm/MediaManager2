@@ -1,4 +1,7 @@
-﻿namespace MediaManager.Models;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace MediaManager.Models;
 
 /// <summary>
 /// Тип медиафайла, определяется по префиксу имени файла.
@@ -23,10 +26,18 @@ public enum MediaFileType
 
 /// <summary>
 /// Один найденный медиафайл.
-/// Хранит всю информацию: путь, тип, дату, отображаемое имя.
+/// Хранит всю информацию: путь, тип, дату, отображаемое имя, статус копирования.
+/// Реализует INotifyPropertyChanged, чтобы кнопки обновлялись при изменении статуса.
 /// </summary>
-public class MediaFile
+public class MediaFile : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
+
     /// <summary>Полный путь к файлу на диске</summary>
     public string FullPath { get; set; } = string.Empty;
 
@@ -41,13 +52,10 @@ public class MediaFile
 
     /// <summary>
     /// "Чистое" имя для отображения — без префикса и даты.
-    /// Например, для "ПАНОРАМА_18_03_18_Сюжет_про_погоду.mp4" → "Сюжет про погоду"
     /// </summary>
     public string DisplayName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Название типа для отображения на бейдже.
-    /// </summary>
+    /// <summary>Название типа для отображения на бейдже.</summary>
     public string TypeLabel => FileType switch
     {
         MediaFileType.Panorama => "ПАНОРАМА",
@@ -57,9 +65,7 @@ public class MediaFile
         _ => "???"
     };
 
-    /// <summary>
-    /// Цвет бейджа в зависимости от типа (hex-строка).
-    /// </summary>
+    /// <summary>Цвет бейджа в зависимости от типа (hex-строка).</summary>
     public string TypeColor => FileType switch
     {
         MediaFileType.Panorama => "#8E24AA",
@@ -72,9 +78,7 @@ public class MediaFile
     /// <summary>Размер файла в байтах</summary>
     public long FileSize { get; set; }
 
-    /// <summary>
-    /// Размер файла, отформатированный для отображения (например, "1.5 ГБ").
-    /// </summary>
+    /// <summary>Размер файла, отформатированный для отображения.</summary>
     public string FileSizeText
     {
         get
@@ -94,4 +98,58 @@ public class MediaFile
 
     /// <summary>Полный путь к родительской папке</summary>
     public string ParentFolderPath { get; set; } = string.Empty;
+
+    // === Статусы копирования по направлениям ===
+
+    // ПАНОРАМА / ДАЙДЖЕСТ
+    private bool _isCopiedToSite2;
+    public bool IsCopiedToSite2
+    {
+        get => _isCopiedToSite2;
+        set { if (_isCopiedToSite2 != value) { _isCopiedToSite2 = value; OnPropertyChanged(); } }
+    }
+
+    private bool _isCopiedToEfir;
+    public bool IsCopiedToEfir
+    {
+        get => _isCopiedToEfir;
+        set { if (_isCopiedToEfir != value) { _isCopiedToEfir = value; OnPropertyChanged(); } }
+    }
+
+    private bool _isCopiedToCoder;
+    public bool IsCopiedToCoder
+    {
+        get => _isCopiedToCoder;
+        set { if (_isCopiedToCoder != value) { _isCopiedToCoder = value; OnPropertyChanged(); } }
+    }
+
+    // НОВОСТИ
+    private bool _isCopiedToStorage;
+    public bool IsCopiedToStorage
+    {
+        get => _isCopiedToStorage;
+        set { if (_isCopiedToStorage != value) { _isCopiedToStorage = value; OnPropertyChanged(); } }
+    }
+
+    private bool _isCopiedToEfir25;
+    public bool IsCopiedToEfir25
+    {
+        get => _isCopiedToEfir25;
+        set { if (_isCopiedToEfir25 != value) { _isCopiedToEfir25 = value; OnPropertyChanged(); } }
+    }
+
+    private bool _isCopiedToCoder25;
+    public bool IsCopiedToCoder25
+    {
+        get => _isCopiedToCoder25;
+        set { if (_isCopiedToCoder25 != value) { _isCopiedToCoder25 = value; OnPropertyChanged(); } }
+    }
+
+    // АРХИВ
+    private bool _isCopiedToArchive;
+    public bool IsCopiedToArchive
+    {
+        get => _isCopiedToArchive;
+        set { if (_isCopiedToArchive != value) { _isCopiedToArchive = value; OnPropertyChanged(); } }
+    }
 }

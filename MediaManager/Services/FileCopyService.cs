@@ -175,31 +175,34 @@ public class FileCopyService
             long totalBytes = sourceInfo.Length;
             long copiedBytes = 0;
 
-            using var sourceStream = new FileStream(
+            // Копируем содержимое файла
+            using (var sourceStream = new FileStream(
                 sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-                bufferSize, useAsync: true);
-
-            using var destStream = new FileStream(
+                bufferSize, useAsync: true))
+            using (var destStream = new FileStream(
                 destPath, FileMode.Create, FileAccess.Write, FileShare.None,
-                bufferSize, useAsync: true);
-
-            int bytesRead;
-            while ((bytesRead = await sourceStream.ReadAsync(
-                       buffer.AsMemory(0, bufferSize), cancellationToken)) > 0)
+                bufferSize, useAsync: true))
             {
-                await destStream.WriteAsync(
-                    buffer.AsMemory(0, bytesRead), cancellationToken);
-
-                copiedBytes += bytesRead;
-
-                if (totalBytes > 0)
+                int bytesRead;
+                while ((bytesRead = await sourceStream.ReadAsync(
+                           buffer.AsMemory(0, bufferSize), cancellationToken)) > 0)
                 {
-                    progress?.Report((double)copiedBytes / totalBytes * 100.0);
+                    await destStream.WriteAsync(
+                        buffer.AsMemory(0, bytesRead), cancellationToken);
+
+                    copiedBytes += bytesRead;
+
+                    if (totalBytes > 0)
+                    {
+                        progress?.Report((double)copiedBytes / totalBytes * 100.0);
+                    }
                 }
             }
+            // Потоки закрыты — теперь безопасно ставить время
 
-            // Устанавливаем время модификации как у оригинала
+            // Копируем и время модификации, и время создания
             File.SetLastWriteTime(destPath, sourceInfo.LastWriteTime);
+            File.SetCreationTime(destPath, sourceInfo.CreationTime);
 
             progress?.Report(100.0);
             return true;
@@ -216,6 +219,7 @@ public class FileCopyService
             return false;
         }
     }
+
 
     /// <summary>
     /// Заменяет время (часы) в имени файла ПАНОРАМЫ / ДАЙДЖЕСТА.
