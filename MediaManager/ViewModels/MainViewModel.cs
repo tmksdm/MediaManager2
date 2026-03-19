@@ -99,6 +99,17 @@ public class MainViewModel : INotifyPropertyChanged
         set { if (Math.Abs(_copyProgress - value) > 0.1) { _copyProgress = value; OnPropertyChanged(); } }
     }
 
+    /// <summary>
+    /// Идёт ли поиск ближайшей даты (для блокировки кнопок ◀ ▶).
+    /// Пока true — кнопки навигации недоступны, в статусе «Поиск...»
+    /// </summary>
+    private bool _isNavigating = false;
+    public bool IsNavigating
+    {
+        get => _isNavigating;
+        set { if (_isNavigating != value) { _isNavigating = value; OnPropertyChanged(); } }
+    }
+
     // ======================================================
     // === Свойства для выпадающего списка проектов ===
     // ======================================================
@@ -167,9 +178,14 @@ public class MainViewModel : INotifyPropertyChanged
     {
         _settingsViewModel = settingsViewModel;
 
-        // Умная навигация: ищем ближайшую дату с файлами
-        NavigateBackCommand = new RelayCommand(_ => NavigateToNearestDate(-1));
-        NavigateForwardCommand = new RelayCommand(_ => NavigateToNearestDate(+1));
+        // Умная навигация: ищем ближайшую дату с файлами (async, не блокирует UI)
+        NavigateBackCommand = new RelayCommand(
+            _ => NavigateToNearestDateAsync(-1),
+            _ => !IsNavigating);  // Кнопка неактивна пока идёт поиск
+        NavigateForwardCommand = new RelayCommand(
+            _ => NavigateToNearestDateAsync(+1),
+            _ => !IsNavigating);  // Кнопка неактивна пока идёт поиск
+
         GoToTodayCommand = new RelayCommand(_ => SelectedDate = DateTime.Today);
         RefreshCommand = new RelayCommand(_ => ScanFiles());
         ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
@@ -186,31 +202,71 @@ public class MainViewModel : INotifyPropertyChanged
         RefreshTodayProjects();
     }
 
-    // --- Умная навигация по датам ---
+    // --- Умная навигация по датам (асинхронная) ---
 
-    private void NavigateToNearestDate(int direction)
+    /// <summary>
+    /// Ищет ближайшую дату с файлами в фоновом потоке.
+    /// UI не блокируется — кнопки ◀ ▶ отключаются на время поиска,
+    /// в статусной строке показывается «Поиск ближайшей даты...»
+    /// </summary>
+    private async void NavigateToNearestDateAsync(int direction)
     {
+        // Защита от повторного запуска
+        if (IsNavigating)
+            return;
+
+        IsNavigating = true;
+        string directionText = direction < 0 ? "назад" : "вперёд";
+        StatusMessage = $"Поиск ближайшей даты ({directionText})...";
+
         var settings = _settingsViewModel.GetSettings();
-        DateTime candidate = SelectedDate;
+        DateTime startDate = SelectedDate;
 
-        for (int i = 0; i < MaxSearchDays; i++)
+        try
         {
-            candidate = candidate.AddDays(direction);
-
-            bool hasFiles = _discoveryService.HasFilesForDate(
-                settings.SearchFolder,
-                settings.AdditionalSearchFolder,
-                candidate);
-
-            if (hasFiles)
+            // Тяжёлая работа — в фоновом потоке (Task.Run)
+            // Внутри только чтение файловой системы, никаких обращений к UI
+            DateTime? foundDate = await Task.Run(() =>
             {
-                SelectedDate = candidate;
-                return;
+                DateTime candidate = startDate;
+
+                for (int i = 0; i < MaxSearchDays; i++)
+                {
+                    candidate = candidate.AddDays(direction);
+
+                    bool hasFiles = _discoveryService.HasFilesForDate(
+                        settings.SearchFolder,
+                        settings.AdditionalSearchFolder,
+                        candidate);
+
+                    if (hasFiles)
+                        return candidate; // Нашли — возвращаем дату
+                }
+
+                return (DateTime?)null; // Не нашли за 365 дней
+            });
+
+            // Обратно в UI-потоке — обновляем свойства
+            if (foundDate.HasValue)
+            {
+                SelectedDate = foundDate.Value;
+            }
+            else
+            {
+                // Не нашли — просто сдвигаем на 1 день
+                SelectedDate = startDate.AddDays(direction);
+                StatusMessage = $"Файлы не найдены за {MaxSearchDays} дней";
             }
         }
-
-        SelectedDate = SelectedDate.AddDays(direction);
-        StatusMessage = $"Файлы не найдены за {MaxSearchDays} дней";
+        catch (Exception ex)
+        {
+            StatusMessage = $"Ошибка поиска даты: {ex.Message}";
+            LogService.Error("Ошибка навигации по датам", ex);
+        }
+        finally
+        {
+            IsNavigating = false;
+        }
     }
 
     // ======================================================
