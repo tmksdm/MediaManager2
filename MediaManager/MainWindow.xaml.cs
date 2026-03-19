@@ -27,6 +27,9 @@ public partial class MainWindow : Window
 
         // Подключаем обработку ресайза через WinAPI после загрузки окна
         SourceInitialized += MainWindow_SourceInitialized;
+
+        // Закрытие Popup при клике за его пределами (для программного открытия)
+        PreviewMouseLeftButtonDown += MainWindow_PreviewMouseLeftButtonDown;
     }
 
     // ======================================================
@@ -209,6 +212,62 @@ public partial class MainWindow : Window
             maximizeButton.Content = "❐";
         }
     }
+
+    // ======================================================
+    // === Поле ввода проекта: открытие/закрытие списка ===
+    // ======================================================
+
+    /// <summary>
+    /// Клик по полю ввода имени проекта — открываем список проектов.
+    /// </summary>
+    private void ProjectNameTextBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_mainViewModel.HasTodayProjects && !_mainViewModel.IsProjectListOpen)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                _mainViewModel.IsProjectListOpen = true;
+            }, System.Windows.Threading.DispatcherPriority.Input);
+        }
+    }
+
+    /// <summary>
+    /// Пользователь начал вводить текст — закрываем выпадающий список.
+    /// </summary>
+    private void ProjectNameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_mainViewModel.IsProjectListOpen)
+        {
+            _mainViewModel.IsProjectListOpen = false;
+        }
+    }
+
+    /// <summary>
+    /// Клик в любом месте окна — если Popup открыт и клик был не по TextBox
+    /// и не по самому Popup, закрываем его вручную.
+    /// PreviewMouseLeftButtonDown на Window срабатывает ДО любого другого элемента.
+    /// </summary>
+    private void MainWindow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_mainViewModel.IsProjectListOpen)
+            return;
+
+        // Проверяем: клик по TextBox ввода имени? — не закрываем
+        if (projectNameTextBox.IsMouseOver)
+            return;
+
+        // Проверяем: клик по кнопке ▼? — не закрываем (она сама toggle-ит)
+        if (projectDropdownButton.IsMouseOver)
+            return;
+
+        // Проверяем: клик внутри Popup? — не закрываем
+        if (projectListPopup.Child is FrameworkElement popupContent && popupContent.IsMouseOver)
+            return;
+
+        // Клик за пределами — закрываем
+        _mainViewModel.IsProjectListOpen = false;
+    }
+
 
     // ======================================================
     // === Панель экспортных имён ===

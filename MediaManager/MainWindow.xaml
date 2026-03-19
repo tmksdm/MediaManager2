@@ -293,7 +293,7 @@
                 <StackPanel>
 
                     <!-- Верхняя строка: создание проекта + навигация -->
-                    <DockPanel Margin="16,10,16,0">
+                    <DockPanel Margin="16,10,16,10">
                         <!-- Правая часть: навигация по датам -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Content="◀" Command="{Binding NavigateBackCommand}"
@@ -314,7 +314,8 @@
                             <TextBlock Text="Имя проекта:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                             <!-- Поле ввода + кнопка ▼ в одной рамке -->
-                            <Border BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="4"
+                            <Border x:Name="projectInputBorder"
+                                    BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="4"
                                     Height="32" Margin="0,0,10,0">
                                 <DockPanel>
                                     <!-- Кнопка ▼ справа (показываем, только если есть проекты) -->
@@ -345,10 +346,13 @@
                                     </Button>
 
                                     <!-- Поле ввода имени -->
-                                    <TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
+                                    <TextBox x:Name="projectNameTextBox"
+                                             Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
                                              FontSize="14" VerticalContentAlignment="Center"
                                              Padding="8,0" BorderThickness="0"
-                                             Width="330"/>
+                                             Width="330"
+                                             PreviewMouseLeftButtonDown="ProjectNameTextBox_PreviewMouseLeftButtonDown"
+                                             TextChanged="ProjectNameTextBox_TextChanged"/>
                                 </DockPanel>
                             </Border>
 
@@ -357,8 +361,9 @@
 
                             <!-- Popup — выпадающий список проектов -->
                             <Popup x:Name="projectListPopup"
-                                   PlacementTarget="{Binding ElementName=projectDropdownButton}"
+                                   PlacementTarget="{Binding ElementName=projectInputBorder}"
                                    Placement="Bottom"
+                                   HorizontalOffset="0"
                                    StaysOpen="False"
                                    IsOpen="{Binding IsProjectListOpen, Mode=TwoWay}"
                                    AllowsTransparency="True"
@@ -386,6 +391,7 @@
                             </Popup>
                         </StackPanel>
                     </DockPanel>
+
 
                     <!-- Панель имён для экспорта (появляется после выбора проекта) -->
                     <Border Margin="16,6,16,10"
