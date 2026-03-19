@@ -33,6 +33,27 @@ public class MainViewModel : INotifyPropertyChanged
     /// </summary>
     private CancellationTokenSource? _copyCts;
 
+    // ======================================================
+    // === FileSystemWatcher — автообновление списка файлов ===
+    // ======================================================
+
+    /// <summary>Watcher для основной папки поиска</summary>
+    private FileSystemWatcher? _watcher1;
+
+    /// <summary>Watcher для дополнительной папки поиска</summary>
+    private FileSystemWatcher? _watcher2;
+
+    /// <summary>
+    /// Таймер для debounce: когда файл появляется / удаляется,
+    /// мы не сканируем сразу, а ждём 500мс — вдруг ещё события придут.
+    /// Это нужно потому что FileSystemWatcher часто шлёт несколько
+    /// событий подряд на один и тот же файл (Created + Changed и т.д.).
+    /// </summary>
+    private CancellationTokenSource? _debounceCts;
+
+    /// <summary>Задержка перед автообновлением (мс)</summary>
+    private const int DebounceDelayMs = 500;
+
     // --- Свойства ---
 
     private DateTime _selectedDate = DateTime.Today;
@@ -243,11 +264,201 @@ public class MainViewModel : INotifyPropertyChanged
         // Команда отмены копирования — активна только пока идёт копирование
         CancelCopyCommand = new RelayCommand(_ => CancelCopy(), _ => IsCopying);
 
+        // Подписываемся на изменение настроек — пересоздадим FileSystemWatcher
+        _settingsViewModel.SettingsChanged += OnSettingsChanged;
+
         // Первое сканирование при запуске
         ScanFilesAsync();
 
         // Загружаем список проектов за сегодня при старте
         RefreshTodayProjects();
+
+        // Запускаем FileSystemWatcher на текущие папки поиска
+        SetupFileWatchers();
+    }
+
+    // ======================================================
+    // === FileSystemWatcher — автообновление ===
+    // ======================================================
+
+    /// <summary>
+    /// Создаёт FileSystemWatcher для папок поиска из настроек.
+    /// Следит за появлением / удалением / переименованием .mp4 файлов.
+    /// При любом изменении — автоматически обновляет список с debounce.
+    /// </summary>
+    private void SetupFileWatchers()
+    {
+        // Сначала убиваем старые watchers (если были)
+        DisposeWatchers();
+
+        var settings = _settingsViewModel.GetSettings();
+
+        // Watcher для основной папки
+        _watcher1 = CreateWatcher(settings.SearchFolder);
+
+        // Watcher для дополнительной папки (если указана)
+        _watcher2 = CreateWatcher(settings.AdditionalSearchFolder);
+    }
+
+    /// <summary>
+    /// Создаёт и настраивает один FileSystemWatcher для указанной папки.
+    /// Возвращает null, если папка пустая или не существует.
+    /// </summary>
+    private FileSystemWatcher? CreateWatcher(string folderPath)
+    {
+        // Пропускаем пустые пути
+        if (string.IsNullOrWhiteSpace(folderPath))
+            return null;
+
+        // Пропускаем несуществующие папки (например, сетевой диск отключён)
+        if (!Directory.Exists(folderPath))
+            return null;
+
+        try
+        {
+            var watcher = new FileSystemWatcher(folderPath)
+            {
+                // Следим только за .mp4 файлами
+                Filter = "*.mp4",
+
+                // Следим за всеми подпапками
+                IncludeSubdirectories = true,
+
+                // Какие изменения отслеживать:
+                // FileName — создание, удаление, переименование файлов
+                // Size — изменение размера (файл дописывается после экспорта)
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size,
+
+                // Включаем мониторинг
+                EnableRaisingEvents = true
+            };
+
+            // Подписываемся на все нужные события
+            watcher.Created += OnFileChanged;    // Новый файл появился
+            watcher.Deleted += OnFileChanged;    // Файл удалён
+            watcher.Renamed += OnFileRenamed;    // Файл переименован
+            watcher.Changed += OnFileChanged;    // Файл изменился (размер вырос)
+
+            // Если watcher не успевает обработать события — ошибка
+            watcher.Error += OnWatcherError;
+
+            return watcher;
+        }
+        catch (Exception ex)
+        {
+            LogService.Error($"Не удалось создать FileSystemWatcher для {folderPath}", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Обработчик событий FileSystemWatcher (Created, Deleted, Changed).
+    /// ВАЖНО: этот метод вызывается из фонового потока!
+    /// Нельзя напрямую обращаться к UI — используем Dispatcher.
+    /// </summary>
+    private void OnFileChanged(object sender, FileSystemEventArgs e)
+    {
+        ScheduleDebouncedScan();
+    }
+
+    /// <summary>
+    /// Обработчик переименования файла.
+    /// </summary>
+    private void OnFileRenamed(object sender, RenamedEventArgs e)
+    {
+        ScheduleDebouncedScan();
+    }
+
+    /// <summary>
+    /// Обработчик ошибок FileSystemWatcher.
+    /// Бывает, если буфер переполнен (слишком много событий сразу).
+    /// Просто пересканируем — это надёжнее, чем пытаться восстановить.
+    /// </summary>
+    private void OnWatcherError(object sender, ErrorEventArgs e)
+    {
+        LogService.Error("Ошибка FileSystemWatcher", e.GetException());
+        ScheduleDebouncedScan();
+    }
+
+    /// <summary>
+    /// Запланировать сканирование через 500мс (debounce).
+    /// 
+    /// Зачем debounce? Когда Premiere экспортирует файл, система генерирует
+    /// несколько событий подряд: Created, Changed (размер 0), Changed (размер растёт),
+    /// Changed (финальный размер). Без debounce мы бы запустили 4 сканирования подряд.
+    /// С debounce — ждём 500мс тишины, и только потом сканируем один раз.
+    /// </summary>
+    private void ScheduleDebouncedScan()
+    {
+        // Отменяем предыдущий отложенный скан (если был)
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = new CancellationTokenSource();
+
+        var token = _debounceCts.Token;
+
+        // Запускаем таймер в фоне
+        Task.Run(async () =>
+        {
+            try
+            {
+                // Ждём 500мс — если за это время придёт новое событие,
+                // этот таймер отменится и запустится новый
+                await Task.Delay(DebounceDelayMs, token);
+
+                // Время вышло, новых событий не было — запускаем сканирование.
+                // ScanFilesAsync() обращается к UI, поэтому вызываем через Dispatcher
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ScanFilesAsync();
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                // Нормально — таймер отменён новым событием, ничего не делаем
+            }
+        }, token);
+    }
+
+    /// <summary>
+    /// Вызывается при изменении настроек (пользователь поменял папки поиска).
+    /// Пересоздаём watchers для новых папок.
+    /// </summary>
+    private void OnSettingsChanged()
+    {
+        SetupFileWatchers();
+    }
+
+    /// <summary>
+    /// Останавливает и освобождает все FileSystemWatcher.
+    /// Вызывается перед пересозданием и при закрытии приложения.
+    /// </summary>
+    private void DisposeWatchers()
+    {
+        if (_watcher1 != null)
+        {
+            _watcher1.EnableRaisingEvents = false;
+            _watcher1.Dispose();
+            _watcher1 = null;
+        }
+
+        if (_watcher2 != null)
+        {
+            _watcher2.EnableRaisingEvents = false;
+            _watcher2.Dispose();
+            _watcher2 = null;
+        }
+    }
+
+    /// <summary>
+    /// Освобождение ресурсов. Вызывается из MainWindow при закрытии.
+    /// </summary>
+    public void Cleanup()
+    {
+        DisposeWatchers();
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _settingsViewModel.SettingsChanged -= OnSettingsChanged;
     }
 
     // --- Умная навигация по датам (асинхронная) ---

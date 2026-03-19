@@ -20,6 +20,12 @@ public class SettingsViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
+    /// <summary>
+    /// Событие: настройки изменились (папки поиска и т.д.).
+    /// MainViewModel подписывается, чтобы пересоздать FileSystemWatcher.
+    /// </summary>
+    public event Action? SettingsChanged;
+
     /// <summary>Объект с текущими настройками</summary>
     private readonly AppSettings _settings;
 
@@ -65,6 +71,8 @@ public class SettingsViewModel : INotifyPropertyChanged
                 _settings.SearchFolder = value;
                 OnPropertyChanged();
                 Save();
+                // Папка поиска изменилась — нужно пересоздать FileSystemWatcher
+                SettingsChanged?.Invoke();
             }
         }
     }
@@ -79,6 +87,8 @@ public class SettingsViewModel : INotifyPropertyChanged
                 _settings.AdditionalSearchFolder = value;
                 OnPropertyChanged();
                 Save();
+                // Дополнительная папка поиска изменилась — пересоздать FileSystemWatcher
+                SettingsChanged?.Invoke();
             }
         }
     }

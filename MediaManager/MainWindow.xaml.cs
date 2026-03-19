@@ -31,6 +31,18 @@ public partial class MainWindow : Window
 
         // Закрытие Popup при клике за его пределами (для программного открытия)
         PreviewMouseLeftButtonDown += MainWindow_PreviewMouseLeftButtonDown;
+
+        // Освобождение ресурсов (FileSystemWatcher и т.д.) при закрытии окна
+        Closed += MainWindow_Closed;
+    }
+
+    /// <summary>
+    /// При закрытии окна освобождаем ресурсы ViewModel
+    /// (FileSystemWatcher, таймеры debounce, подписки на события).
+    /// </summary>
+    private void MainWindow_Closed(object? sender, EventArgs e)
+    {
+        _mainViewModel.Cleanup();
     }
 
     // ======================================================
