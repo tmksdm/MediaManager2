@@ -209,4 +209,17 @@ public partial class MainWindow : Window
             maximizeButton.Content = "❐";
         }
     }
+
+    // ======================================================
+    // === Панель экспортных имён ===
+    // ======================================================
+
+    /// <summary>
+    /// Закрыть панель имён для экспорта (крестик ✕).
+    /// Сбрасываем выбранный проект — панель скроется.
+    /// </summary>
+    private void CloseExportPanel_Click(object sender, RoutedEventArgs e)
+    {
+        _mainViewModel.SelectedProject = null;
+    }
 }

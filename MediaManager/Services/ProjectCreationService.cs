@@ -5,6 +5,8 @@ namespace MediaManager.Services;
 
 /// <summary>
 /// Сервис создания проектов.
+/// Создаёт папку + .prproj файл (без пустых .mp4).
+/// Умеет сканировать папку даты и генерировать имена для экспорта.
 /// </summary>
 public class ProjectCreationService
 {
@@ -13,11 +15,11 @@ public class ProjectCreationService
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
         public string ProjectFolderPath { get; set; } = string.Empty;
-        public int StubFilesCreated { get; set; }
     }
 
     /// <summary>
-    /// Создать проект: папку с датой, подпапку, шаблон и заглушки .mp4.
+    /// Создать проект: папку с датой, подпапку, шаблон .prproj.
+    /// Пустые .mp4-заглушки больше НЕ создаются.
     /// </summary>
     public ProjectCreationResult CreateProject(string rawName, DateTime date, AppSettings settings)
     {
@@ -39,7 +41,6 @@ public class ProjectCreationService
         string dd = date.Day.ToString("D2");
         string dateFolderName = date.ToString("dd.MM.yyyy");
         string datePrefix = $"{mm}_{dd}";
-        string datePrefixCompact = $"{mm}{dd}";
 
         // === 4. Создаём папку даты ===
         string dateFolderPath = Path.Combine(settings.ProjectBaseFolder, dateFolderName);
@@ -106,33 +107,105 @@ public class ProjectCreationService
             }
         }
 
-        // === 7. Создаём пустые .mp4-заглушки ===
-        int stubCount = 0;
-        string[] stubFileNames = GenerateStubFileNames(datePrefix, datePrefixCompact, processedName);
-
-        foreach (string stubName in stubFileNames)
-        {
-            try
-            {
-                string stubPath = Path.Combine(projectFolderPath, stubName);
-                File.Create(stubPath).Dispose();
-                stubCount++;
-            }
-            catch (Exception ex)
-            {
-                LogService.Error($"Не удалось создать заглушку: {stubName}", ex);
-            }
-        }
-
-        // === 8. Возвращаем результат ===
+        // === 7. Возвращаем результат ===
         return new ProjectCreationResult
         {
             Success = true,
-            Message = $"Проект создан: {subFolderName} ({stubCount} файлов)",
-            ProjectFolderPath = projectFolderPath,
-            StubFilesCreated = stubCount
+            Message = $"Проект создан: {subFolderName}",
+            ProjectFolderPath = projectFolderPath
         };
     }
+
+    /// <summary>
+    /// Получить список проектов (имён подпапок) за указанную дату.
+    /// Сканирует папку DD.MM.YYYY внутри базовой папки проектов.
+    /// </summary>
+    public List<string> GetTodayProjects(DateTime date, AppSettings settings)
+    {
+        var projects = new List<string>();
+
+        string dateFolderName = date.ToString("dd.MM.yyyy");
+        string dateFolderPath = Path.Combine(settings.ProjectBaseFolder, dateFolderName);
+
+        if (!Directory.Exists(dateFolderPath))
+            return projects;
+
+        try
+        {
+            // Получаем все подпапки в папке даты
+            var subDirs = Directory.GetDirectories(dateFolderPath);
+            foreach (string dir in subDirs)
+            {
+                string folderName = Path.GetFileName(dir);
+                projects.Add(folderName);
+            }
+
+            // Сортируем по алфавиту
+            projects.Sort();
+        }
+        catch (Exception ex)
+        {
+            LogService.Error($"Ошибка сканирования проектов за {dateFolderName}", ex);
+        }
+
+        return projects;
+    }
+
+    /// <summary>
+    /// Генерирует 4 имени файлов для экспорта (без расширения .mp4).
+    /// Формат идентичен прежним .mp4-заглушкам, но без расширения.
+    /// </summary>
+    /// <param name="projectFolderName">Имя подпапки проекта, например "03_19_СвалкаНаФилипова_Адаменко"</param>
+    /// <returns>Список из 4 имён с описанием типа</returns>
+    public List<ExportName> GenerateExportNames(string projectFolderName)
+    {
+        var names = new List<ExportName>();
+
+        // Разбираем имя папки: "MM_DD_ИмяПроекта"
+        // Первые 5 символов — "MM_DD", остальное после "_" — имя
+        if (projectFolderName.Length < 6 || projectFolderName[2] != '_' || projectFolderName[5] != '_')
+            return names;
+
+        string mm = projectFolderName[..2];
+        string dd = projectFolderName[3..5];
+        string processedName = projectFolderName[6..];
+        string datePrefixCompact = $"{mm}{dd}";
+        string datePrefix = $"{mm}_{dd}";
+
+        string newsName = RemoveLastWord(processedName);
+
+        names.Add(new ExportName
+        {
+            TypeLabel = "АРХИВ",
+            Name = $"{datePrefix}_{processedName}_",
+            TypeColor = "#43A047"
+        });
+
+        names.Add(new ExportName
+        {
+            TypeLabel = "НОВОСТИ",
+            Name = $"НОВОСТИ_{datePrefixCompact}_{newsName}_",
+            TypeColor = "#E53935"
+        });
+
+        names.Add(new ExportName
+        {
+            TypeLabel = "ПАНОРАМА",
+            Name = $"ПАНОРАМА_18_{datePrefix}_{processedName}_",
+            TypeColor = "#8E24AA"
+        });
+
+        names.Add(new ExportName
+        {
+            TypeLabel = "ДАЙДЖЕСТ",
+            Name = $"ПАНОРАМА_ДАЙДЖЕСТ_00_{datePrefix}_{processedName}_",
+            TypeColor = "#8E24AA"
+        });
+
+        return names;
+    }
+
+    // --- Вспомогательные методы ---
 
     private static string ProcessName(string rawName)
     {
@@ -148,18 +221,20 @@ public class ProjectCreationService
             return processedName;
         return processedName[..lastUnderscore];
     }
+}
 
-    private static string[] GenerateStubFileNames(
-        string datePrefix, string datePrefixCompact, string processedName)
-    {
-        string newsName = RemoveLastWord(processedName);
+/// <summary>
+/// Одно имя файла для экспорта (без .mp4).
+/// Отображается в панели под строкой создания проекта.
+/// </summary>
+public class ExportName
+{
+    /// <summary>Тип файла для бейджа: АРХИВ, НОВОСТИ, ПАНОРАМА, ДАЙДЖЕСТ</summary>
+    public string TypeLabel { get; set; } = string.Empty;
 
-        return
-        [
-            $"{datePrefix}_{processedName}_.mp4",
-            $"НОВОСТИ_{datePrefixCompact}_{newsName}_.mp4",
-            $"ПАНОРАМА_18_{datePrefix}_{processedName}_.mp4",
-            $"ПАНОРАМА_ДАЙДЖЕСТ_00_{datePrefix}_{processedName}_.mp4"
-        ];
-    }
+    /// <summary>Имя для копирования в буфер (без .mp4)</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Цвет бейджа</summary>
+    public string TypeColor { get; set; } = "#9E9E9E";
 }

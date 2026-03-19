@@ -99,6 +99,58 @@ public class MainViewModel : INotifyPropertyChanged
         set { if (Math.Abs(_copyProgress - value) > 0.1) { _copyProgress = value; OnPropertyChanged(); } }
     }
 
+    // ======================================================
+    // === Свойства для выпадающего списка проектов ===
+    // ======================================================
+
+    /// <summary>Список проектов (имён подпапок) за сегодняшнюю дату</summary>
+    private ObservableCollection<string> _todayProjects = new();
+    public ObservableCollection<string> TodayProjects
+    {
+        get => _todayProjects;
+        set { _todayProjects = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasTodayProjects)); }
+    }
+
+    /// <summary>Есть ли проекты за сегодня (для показа треугольника ▼)</summary>
+    public bool HasTodayProjects => TodayProjects.Count > 0;
+
+    /// <summary>Открыт ли выпадающий список проектов</summary>
+    private bool _isProjectListOpen = false;
+    public bool IsProjectListOpen
+    {
+        get => _isProjectListOpen;
+        set { if (_isProjectListOpen != value) { _isProjectListOpen = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>Выбранный проект из списка (имя подпапки)</summary>
+    private string? _selectedProject;
+    public string? SelectedProject
+    {
+        get => _selectedProject;
+        set
+        {
+            if (_selectedProject != value)
+            {
+                _selectedProject = value;
+                OnPropertyChanged();
+
+                // Когда выбрали проект — генерируем имена для экспорта
+                UpdateExportNames();
+            }
+        }
+    }
+
+    /// <summary>Список имён файлов для экспорта (для панели под строкой создания)</summary>
+    private ObservableCollection<ExportName> _exportNames = new();
+    public ObservableCollection<ExportName> ExportNames
+    {
+        get => _exportNames;
+        set { _exportNames = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasExportNames)); }
+    }
+
+    /// <summary>Есть ли имена для показа</summary>
+    public bool HasExportNames => ExportNames.Count > 0;
+
     // --- Команды ---
 
     public RelayCommand NavigateBackCommand { get; }
@@ -107,6 +159,9 @@ public class MainViewModel : INotifyPropertyChanged
     public RelayCommand RefreshCommand { get; }
     public RelayCommand ToggleSettingsCommand { get; }
     public RelayCommand CreateProjectCommand { get; }
+    public RelayCommand ToggleProjectListCommand { get; }
+    public RelayCommand SelectProjectCommand { get; }
+    public RelayCommand CopyExportNameCommand { get; }
 
     public MainViewModel(SettingsViewModel settingsViewModel)
     {
@@ -120,7 +175,15 @@ public class MainViewModel : INotifyPropertyChanged
         ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
         CreateProjectCommand = new RelayCommand(_ => ExecuteCreateProject());
 
+        // Новые команды для списка проектов
+        ToggleProjectListCommand = new RelayCommand(_ => ToggleProjectList());
+        SelectProjectCommand = new RelayCommand(param => SelectProject(param as string));
+        CopyExportNameCommand = new RelayCommand(param => CopyExportName(param as string));
+
         ScanFiles();
+
+        // Загружаем список проектов за сегодня при старте
+        RefreshTodayProjects();
     }
 
     // --- Умная навигация по датам ---
@@ -150,18 +213,24 @@ public class MainViewModel : INotifyPropertyChanged
         StatusMessage = $"Файлы не найдены за {MaxSearchDays} дней";
     }
 
-    // --- Создание проекта ---
+    // ======================================================
+    // === Создание проекта ===
+    // ======================================================
 
     private void ExecuteCreateProject()
     {
         var settings = _settingsViewModel.GetSettings();
 
-        var result = _projectService.CreateProject(ProjectName, SelectedDate, settings);
+        var result = _projectService.CreateProject(ProjectName, DateTime.Today, settings);
 
         if (result.Success)
         {
             StatusMessage = $"✅ {result.Message}";
             ProjectName = string.Empty;
+
+            // Обновляем список проектов — появится новый
+            RefreshTodayProjects();
+
             ScanFiles();
         }
         else
@@ -170,7 +239,83 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    // --- Копирование ---
+    // ======================================================
+    // === Выпадающий список проектов ===
+    // ======================================================
+
+    /// <summary>
+    /// Обновляет список проектов за сегодняшнюю дату.
+    /// Вызывается при старте и после создания нового проекта.
+    /// </summary>
+    private void RefreshTodayProjects()
+    {
+        var settings = _settingsViewModel.GetSettings();
+        var projects = _projectService.GetTodayProjects(DateTime.Today, settings);
+        TodayProjects = new ObservableCollection<string>(projects);
+    }
+
+    /// <summary>
+    /// Открыть/закрыть выпадающий список проектов.
+    /// Перед открытием обновляем список (вдруг папки добавили вручную).
+    /// </summary>
+    private void ToggleProjectList()
+    {
+        if (!IsProjectListOpen)
+        {
+            RefreshTodayProjects();
+        }
+        IsProjectListOpen = !IsProjectListOpen;
+    }
+
+    /// <summary>
+    /// Пользователь выбрал проект из списка — генерируем имена.
+    /// </summary>
+    private void SelectProject(string? projectName)
+    {
+        if (string.IsNullOrEmpty(projectName))
+            return;
+
+        SelectedProject = projectName;
+        IsProjectListOpen = false; // Закрываем выпадающий список
+    }
+
+    /// <summary>
+    /// Генерируем 4 имени для экспорта по выбранному проекту.
+    /// </summary>
+    private void UpdateExportNames()
+    {
+        if (string.IsNullOrEmpty(SelectedProject))
+        {
+            ExportNames = new ObservableCollection<ExportName>();
+            return;
+        }
+
+        var names = _projectService.GenerateExportNames(SelectedProject);
+        ExportNames = new ObservableCollection<ExportName>(names);
+    }
+
+    /// <summary>
+    /// Копировать имя в буфер обмена.
+    /// </summary>
+    private void CopyExportName(string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return;
+
+        try
+        {
+            Clipboard.SetText(name);
+            StatusMessage = $"📋 Скопировано: {name}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ Ошибка копирования в буфер: {ex.Message}";
+        }
+    }
+
+    // ======================================================
+    // === Копирование файлов ===
+    // ======================================================
 
     public async Task ExecuteCopyAsync(MediaFile file, string destinationKey)
     {
