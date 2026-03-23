@@ -7,6 +7,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading; // НОВОЕ — для DispatcherTimer
 
 namespace MediaManager.ViewModels;
 
@@ -56,6 +57,25 @@ public class MainViewModel : INotifyPropertyChanged
 
     /// <summary>Задержка перед автообновлением (мс)</summary>
     private const int DebounceDelayMs = 500;
+
+    // ======================================================
+    // === НОВОЕ: Таймер периодической проверки статусов ===
+    // ======================================================
+
+    /// <summary>
+    /// Таймер, который раз в 30 секунд тихо пересканирует статусы
+    /// копирования файлов, отображаемых на экране.
+    /// Это нужно, чтобы кнопки автоматически «сбрасывались»,
+    /// если кто-то удалил файл из конечной папки.
+    /// Не создаёт нагрузки — проверяются только файлы текущей даты.
+    /// </summary>
+    private readonly DispatcherTimer _statusRecheckTimer; // НОВОЕ
+
+    /// <summary>Интервал фоновой проверки статусов (секунды)</summary>
+    private const int StatusRecheckIntervalSeconds = 30; // НОВОЕ
+
+    /// <summary>Флаг: идёт ли фоновая проверка статусов (защита от наложения)</summary>
+    private bool _isRecheckingStatuses; // НОВОЕ
 
     // --- Свойства ---
 
@@ -329,6 +349,16 @@ public class MainViewModel : INotifyPropertyChanged
         // Подписываемся на изменение настроек — пересоздадим FileSystemWatcher
         _settingsViewModel.SettingsChanged += OnSettingsChanged;
 
+        // НОВОЕ: Создаём таймер периодической проверки статусов копирования.
+        // DispatcherTimer работает в UI-потоке — его Tick безопасно обращается к свойствам.
+        // Тяжёлая работа (File.Exists по сети) уходит в Task.Run внутри обработчика.
+        _statusRecheckTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(StatusRecheckIntervalSeconds)
+        };
+        _statusRecheckTimer.Tick += async (_, _) => await RecheckCopyStatusesAsync();
+        _statusRecheckTimer.Start();
+
         // Первое сканирование при запуске
         ScanFilesAsync();
 
@@ -337,6 +367,85 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Запускаем FileSystemWatcher на текущие папки поиска
         SetupFileWatchers();
+    }
+
+    // ======================================================
+    // === НОВОЕ: Фоновая проверка статусов копирования ===
+    // ======================================================
+
+    /// <summary>
+    /// Тихо пересканирует статусы копирования файлов на экране.
+    /// Вызывается таймером каждые 30 секунд.
+    /// 
+    /// Зачем это нужно: после копирования кнопка становится «залитой».
+    /// Если кто-то удалит файл из конечной папки — кнопка останется залитой,
+    /// потому что приложение об этом не знает. Этот таймер тихо проверяет
+    /// все конечные пути и сбрасывает кнопки, если файлы пропали.
+    /// 
+    /// Не запускается, если:
+    /// - нет файлов на экране (нечего проверять)
+    /// - идёт полное сканирование (ScanFilesAsync уже проверит статусы)
+    /// - идёт копирование (не мешаем, статус обновится после копирования)
+    /// - предыдущая проверка ещё не завершилась
+    /// </summary>
+    private async Task RecheckCopyStatusesAsync()
+    {
+        // Защита от наложения: если предыдущий тик ещё работает — пропускаем
+        if (_isRecheckingStatuses)
+            return;
+
+        // Не проверяем, если нет файлов, идёт сканирование или копирование
+        if (FolderGroups.Count == 0 || IsScanning || IsCopying)
+            return;
+
+        _isRecheckingStatuses = true;
+
+        try
+        {
+            var settings = _settingsViewModel.GetSettings();
+
+            // Собираем все файлы и их направления для проверки (в UI-потоке)
+            var fileDestinations = new List<(MediaFile File, List<FileCopyService.CopyDestination> Destinations)>();
+            foreach (var group in FolderGroups)
+            {
+                foreach (var file in group.Files)
+                {
+                    var destinations = _copyService.GetDestinations(file, settings);
+                    fileDestinations.Add((file, destinations));
+                }
+            }
+
+            // Проверяем все статусы в фоновом потоке (File.Exists по сети — медленно)
+            var results = await Task.Run(() =>
+            {
+                var list = new List<(MediaFile File, string Label, bool Copied)>();
+                foreach (var (file, destinations) in fileDestinations)
+                {
+                    foreach (var dest in destinations)
+                    {
+                        bool copied = _copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath);
+                        list.Add((file, dest.Label, copied));
+                    }
+                }
+                return list;
+            });
+
+            // Обновляем флаги в UI-потоке (мы уже в UI-потоке после await)
+            foreach (var (file, label, copied) in results)
+            {
+                SetCopiedFlag(file, label, copied);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Тихо логируем ошибку — не показываем пользователю,
+            // чтобы фоновая проверка не мешала работе
+            LogService.Error("Ошибка фоновой проверки статусов копирования", ex);
+        }
+        finally
+        {
+            _isRecheckingStatuses = false;
+        }
     }
 
     // ======================================================
@@ -517,6 +626,9 @@ public class MainViewModel : INotifyPropertyChanged
     /// </summary>
     public void Cleanup()
     {
+        // НОВОЕ: останавливаем таймер проверки статусов
+        _statusRecheckTimer.Stop();
+
         DisposeWatchers();
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
