@@ -1,11 +1,12 @@
-﻿using System.Runtime.InteropServices;
+﻿using MediaManager.Models;
+using MediaManager.Services;
+using MediaManager.ViewModels;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using MediaManager.Models;
-using MediaManager.ViewModels;
 
 namespace MediaManager;
 
@@ -360,4 +361,118 @@ public partial class MainWindow : Window
     {
         _mainViewModel.SelectedProject = null;
     }
+
+    // ======================================================
+    // === Открытие файла / папки ===
+    // ======================================================
+
+    /// <summary>
+    /// Двойной клик по строке файла — открыть файл (в плеере по умолчанию).
+    /// Process.Start с UseShellExecute = true запускает файл через ассоциацию Windows
+    /// (как если бы пользователь дважды кликнул по файлу в Проводнике).
+    /// </summary>
+    private void FileRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Реагируем только на двойной клик
+        if (e.ClickCount != 2)
+            return;
+
+        // Проверяем, что клик не попал на кнопку копирования —
+        // если попал, пусть кнопка обработает сама
+        if (e.OriginalSource is FrameworkElement fe && IsInsideCopyButton(fe))
+            return;
+
+        if (sender is not FrameworkElement element || element.DataContext is not MediaFile file)
+            return;
+
+        OpenFileInShell(file.FullPath);
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Контекстное меню → «Открыть файл» — то же, что двойной клик.
+    /// </summary>
+    private void OpenFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetMediaFileFromMenuItem(sender) is MediaFile file)
+            OpenFileInShell(file.FullPath);
+    }
+
+    /// <summary>
+    /// Контекстное меню → «Открыть папку» — открывает Explorer с выделенным файлом.
+    /// Команда: explorer.exe /select,"путь_к_файлу"
+    /// Ключ /select — Windows откроет папку и подсветит нужный файл.
+    /// </summary>
+    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetMediaFileFromMenuItem(sender) is not MediaFile file)
+            return;
+
+        try
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{file.FullPath}\"");
+        }
+        catch (Exception ex)
+        {
+            _mainViewModel.StatusMessage = $"❌ Не удалось открыть папку: {ex.Message}";
+            LogService.Error("Ошибка открытия папки", ex);
+        }
+    }
+
+    /// <summary>
+    /// Открывает файл через системную ассоциацию (UseShellExecute).
+    /// .mp4 обычно открывается в видеоплеере (VLC, встроенный плеер и т.д.).
+    /// </summary>
+    private void OpenFileInShell(string filePath)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = filePath,
+                UseShellExecute = true  // Открыть через ассоциацию Windows
+            });
+        }
+        catch (Exception ex)
+        {
+            _mainViewModel.StatusMessage = $"❌ Не удалось открыть файл: {ex.Message}";
+            LogService.Error("Ошибка открытия файла", ex);
+        }
+    }
+
+    /// <summary>
+    /// Извлекает MediaFile из DataContext элемента контекстного меню.
+    /// ContextMenu в WPF «отрывается» от визуального дерева,
+    /// поэтому DataContext берём через PlacementTarget — это Border строки файла.
+    /// </summary>
+    private static MediaFile? GetMediaFileFromMenuItem(object sender)
+    {
+        if (sender is MenuItem menuItem &&
+            menuItem.Parent is ContextMenu contextMenu &&
+            contextMenu.PlacementTarget is FrameworkElement target &&
+            target.DataContext is MediaFile file)
+        {
+            return file;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Проверяет, находится ли элемент внутри кнопки копирования.
+    /// Нужно, чтобы двойной клик по кнопке «Site2» / «Эфир» и т.д.
+    /// не открывал файл — пусть кнопка сработает как обычно.
+    /// </summary>
+    private static bool IsInsideCopyButton(DependencyObject element)
+    {
+        DependencyObject? current = element;
+        while (current != null)
+        {
+            if (current is Button)
+                return true;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return false;
+    }
+
+
 }

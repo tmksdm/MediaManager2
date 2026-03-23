@@ -564,20 +564,32 @@
                                         <ItemsControl ItemsSource="{Binding Files}" AlternationCount="2">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border BorderBrush="#F0F0F0" BorderThickness="0,0,0,1" Padding="8,6">
+                                                    <Border BorderBrush="#F0F0F0" BorderThickness="0,0,0,1" Padding="8,6"
+            MouseLeftButtonDown="FileRow_MouseLeftButtonDown"
+            Cursor="Hand">
                                                         <!-- Фон «зебры» -->
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="Transparent"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter},
-                                                                                                   Path=(ItemsControl.AlternationIndex)}"
-                                                                                 Value="1">
+                                                   Path=(ItemsControl.AlternationIndex)}"
+                                 Value="1">
                                                                         <Setter Property="Background" Value="#F7F5FA"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </Border.Style>
+
+                                                        <!-- Контекстное меню (правый клик) -->
+                                                        <Border.ContextMenu>
+                                                            <ContextMenu>
+                                                                <MenuItem Header="Открыть файл" Click="OpenFile_Click"
+                          FontSize="13"/>
+                                                                <MenuItem Header="Открыть папку" Click="OpenFolder_Click"
+                          FontSize="13"/>
+                                                            </ContextMenu>
+                                                        </Border.ContextMenu>
 
                                                         <DockPanel>
                                                             <!-- Кнопки копирования — справа -->
@@ -812,11 +824,11 @@
                                                                         </Style>
                                                                     </Border.Style>
                                                                     <TextBlock Text="{Binding TypeLabel}" Foreground="White"
-                                                                               FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                               FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                                                                 </Border>
                                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13"
-                                                                           Foreground="#212121" VerticalAlignment="Center"
-                                                                           TextTrimming="CharacterEllipsis"/>
+                           Foreground="#212121" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
                                                             </StackPanel>
 
                                                         </DockPanel>
