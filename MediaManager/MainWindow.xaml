@@ -6,8 +6,6 @@
         Title="Медиа-менеджер"
         Icon="app.ico"
         MinWidth="1050" MinHeight="600"
-        Width="1250" Height="850"
-        WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent">

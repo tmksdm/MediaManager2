@@ -46,4 +46,21 @@ public class AppSettings
 
     /// <summary>Сюжеты панорамы: \\Archive2\сюжеты панорамы 2\{year}\{MM}_{MONTH_UPPER}</summary>
     public string ArchiveStories { get; set; } = @"\\Archive2\сюжеты панорамы 2";
+
+    // --- Позиция и размер окна ---
+
+    /// <summary>Позиция окна X (Left). null = первый запуск, центрировать</summary>
+    public double? WindowLeft { get; set; }
+
+    /// <summary>Позиция окна Y (Top). null = первый запуск, центрировать</summary>
+    public double? WindowTop { get; set; }
+
+    /// <summary>Ширина окна</summary>
+    public double WindowWidth { get; set; } = 1250;
+
+    /// <summary>Высота окна</summary>
+    public double WindowHeight { get; set; } = 850;
+
+    /// <summary>Было ли окно развёрнуто на весь экран</summary>
+    public bool WindowMaximized { get; set; } = false;
 }

@@ -14,6 +14,16 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _mainViewModel;
 
+    /// <summary>
+    /// Запоминаем размер и позицию окна в Normal-состоянии,
+    /// чтобы при закрытии из Maximized сохранить именно Normal-размеры.
+    /// Иначе при следующем запуске окно будет на весь экран без возможности вернуться.
+    /// </summary>
+    private double _restoreLeft;
+    private double _restoreTop;
+    private double _restoreWidth;
+    private double _restoreHeight;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -24,6 +34,9 @@ public partial class MainWindow : Window
         DataContext = _mainViewModel;
         settingsPanel.DataContext = settingsViewModel;
 
+        // Загружаем позицию и размер окна из настроек
+        RestoreWindowPosition(settingsViewModel.GetSettings());
+
         // Подписываемся на нажатия клавиш для всего окна
         PreviewKeyDown += MainWindow_PreviewKeyDown;
 
@@ -33,16 +46,171 @@ public partial class MainWindow : Window
         // Закрытие Popup при клике за его пределами (для программного открытия)
         PreviewMouseLeftButtonDown += MainWindow_PreviewMouseLeftButtonDown;
 
-        // Освобождение ресурсов (FileSystemWatcher и т.д.) при закрытии окна
+        // При закрытии — сохраняем позицию и освобождаем ресурсы
         Closed += MainWindow_Closed;
+
+        // Запоминаем Normal-размеры при каждом перемещении/ресайзе
+        LocationChanged += (_, _) => RememberNormalBounds();
+        SizeChanged += (_, _) => RememberNormalBounds();
+    }
+
+    // ======================================================
+    // === Запоминание и восстановление позиции окна ===
+    // ======================================================
+
+    /// <summary>
+    /// Восстанавливает позицию и размер окна из настроек.
+    /// Если это первый запуск (Left/Top = null) — центрируем по экрану.
+    /// Если сохранённая позиция за пределами экранов — тоже центрируем.
+    /// </summary>
+    private void RestoreWindowPosition(AppSettings settings)
+    {
+        // Устанавливаем размер
+        Width = settings.WindowWidth;
+        Height = settings.WindowHeight;
+
+        if (settings.WindowLeft.HasValue && settings.WindowTop.HasValue)
+        {
+            double left = settings.WindowLeft.Value;
+            double top = settings.WindowTop.Value;
+
+            // Проверяем, что окно хотя бы частично видно на каком-нибудь мониторе
+            if (IsPositionOnScreen(left, top, Width, Height))
+            {
+                Left = left;
+                Top = top;
+            }
+            else
+            {
+                // Позиция вне экрана — центрируем
+                CenterOnScreen();
+            }
+        }
+        else
+        {
+            // Первый запуск — центрируем
+            CenterOnScreen();
+        }
+
+        // Запоминаем Normal-размеры до возможного Maximize
+        _restoreLeft = Left;
+        _restoreTop = Top;
+        _restoreWidth = Width;
+        _restoreHeight = Height;
+
+        // Если было развёрнуто — разворачиваем
+        if (settings.WindowMaximized)
+        {
+            WindowState = WindowState.Maximized;
+            maximizeButton.Content = "❐";
+        }
+    }
+
+    // --- WinAPI для проверки мониторов ---
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
     }
 
     /// <summary>
-    /// При закрытии окна освобождаем ресурсы ViewModel
+    /// Ищет монитор, на котором находится прямоугольник.
+    /// MONITOR_DEFAULTTONULL (0) — вернёт IntPtr.Zero, если прямоугольник
+    /// не пересекается ни с одним монитором.
+    /// </summary>
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromRect(ref RECT lprc, uint dwFlags);
+
+    private const uint MONITOR_DEFAULTTONULL = 0;
+
+    /// <summary>
+    /// Проверяет, что окно хотя бы частично видно на каком-нибудь мониторе.
+    /// Используем WinAPI MonitorFromRect — он возвращает null, если
+    /// прямоугольник не пересекается ни с одним монитором.
+    /// </summary>
+    private static bool IsPositionOnScreen(double left, double top, double width, double height)
+    {
+        // Уменьшаем прямоугольник проверки — требуем, чтобы хотя бы
+        // 100×100 пикселей окна были на экране (а не 1 пиксель уголка)
+        const int minVisible = 100;
+
+        var rect = new RECT
+        {
+            Left = (int)left + minVisible,
+            Top = (int)top + minVisible,
+            Right = (int)(left + width) - minVisible,
+            Bottom = (int)(top + height) - minVisible
+        };
+
+        // Если после сужения прямоугольник стал невалидным — считаем «вне экрана»
+        if (rect.Right <= rect.Left || rect.Bottom <= rect.Top)
+            return false;
+
+        IntPtr monitor = MonitorFromRect(ref rect, MONITOR_DEFAULTTONULL);
+        return monitor != IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Центрирует окно на основном мониторе.
+    /// </summary>
+    private void CenterOnScreen()
+    {
+        var workArea = SystemParameters.WorkArea;
+        Left = (workArea.Width - Width) / 2 + workArea.Left;
+        Top = (workArea.Height - Height) / 2 + workArea.Top;
+    }
+
+    /// <summary>
+    /// Запоминает текущие Normal-размеры окна.
+    /// Вызывается при каждом перемещении/ресайзе.
+    /// В Maximized-состоянии — не обновляем (чтобы не потерять Normal-координаты).
+    /// </summary>
+    private void RememberNormalBounds()
+    {
+        if (WindowState == WindowState.Normal)
+        {
+            _restoreLeft = Left;
+            _restoreTop = Top;
+            _restoreWidth = Width;
+            _restoreHeight = Height;
+        }
+    }
+
+    /// <summary>
+    /// Сохраняет позицию и размер окна в настройки перед закрытием.
+    /// Всегда сохраняем Normal-координаты (даже если закрываем из Maximized).
+    /// </summary>
+    private void SaveWindowPosition()
+    {
+        var settings = ((SettingsViewModel)settingsPanel.DataContext).GetSettings();
+
+        // Сохраняем Normal-координаты (запомненные до Maximize)
+        settings.WindowLeft = _restoreLeft;
+        settings.WindowTop = _restoreTop;
+        settings.WindowWidth = _restoreWidth;
+        settings.WindowHeight = _restoreHeight;
+        settings.WindowMaximized = WindowState == WindowState.Maximized;
+
+        SettingsService.Save(settings);
+    }
+
+    /// <summary>
+    /// При закрытии окна: сохраняем позицию + освобождаем ресурсы ViewModel
     /// (FileSystemWatcher, таймеры debounce, подписки на события).
     /// </summary>
     private void MainWindow_Closed(object? sender, EventArgs e)
     {
+        SaveWindowPosition();
         _mainViewModel.Cleanup();
     }
 
