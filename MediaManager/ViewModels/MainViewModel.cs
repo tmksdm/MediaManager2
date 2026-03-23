@@ -27,6 +27,9 @@ public class MainViewModel : INotifyPropertyChanged
     /// <summary>Максимум дней для поиска ближайшей даты с файлами</summary>
     private const int MaxSearchDays = 365;
 
+    /// <summary>Максимум записей в журнале копирований (чтобы не копить бесконечно)</summary>
+    private const int MaxLogEntries = 50;
+
     /// <summary>
     /// Токен отмены текущего копирования.
     /// Создаётся перед каждым копированием, отменяется по кнопке «Отмена».
@@ -173,6 +176,59 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     // ======================================================
+    // === Журнал копирований ===
+    // ======================================================
+
+    /// <summary>
+    /// Журнал копирований за текущую сессию.
+    /// Новые записи добавляются в начало (самое свежее — сверху).
+    /// Максимум MaxLogEntries записей.
+    /// </summary>
+    private ObservableCollection<CopyLogEntry> _copyLog = new();
+    public ObservableCollection<CopyLogEntry> CopyLog
+    {
+        get => _copyLog;
+        set { _copyLog = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Есть ли записи в журнале (для показа/скрытия панели)</summary>
+    public bool HasLogEntries => CopyLog.Count > 0;
+
+    /// <summary>Развёрнут ли журнал копирований</summary>
+    private bool _isLogExpanded = true;
+    public bool IsLogExpanded
+    {
+        get => _isLogExpanded;
+        set { if (_isLogExpanded != value) { _isLogExpanded = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>
+    /// Добавляет запись в журнал копирований.
+    /// Вставляет в начало списка (самое свежее — сверху).
+    /// Удаляет старые записи если превышен лимит.
+    /// </summary>
+    private void AddLogEntry(string fileName, string destination, CopyLogStatus status)
+    {
+        var entry = new CopyLogEntry
+        {
+            Timestamp = DateTime.Now,
+            FileName = fileName,
+            Destination = destination,
+            Status = status
+        };
+
+        CopyLog.Insert(0, entry);
+
+        // Убираем старые записи, если превышен лимит
+        while (CopyLog.Count > MaxLogEntries)
+        {
+            CopyLog.RemoveAt(CopyLog.Count - 1);
+        }
+
+        OnPropertyChanged(nameof(HasLogEntries));
+    }
+
+    // ======================================================
     // === Свойства для выпадающего списка проектов ===
     // ======================================================
 
@@ -236,6 +292,8 @@ public class MainViewModel : INotifyPropertyChanged
     public RelayCommand SelectProjectCommand { get; }
     public RelayCommand CopyExportNameCommand { get; }
     public RelayCommand CancelCopyCommand { get; }
+    public RelayCommand ToggleLogCommand { get; }
+    public RelayCommand ClearLogCommand { get; }
 
     public MainViewModel(SettingsViewModel settingsViewModel)
     {
@@ -263,6 +321,10 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Команда отмены копирования — активна только пока идёт копирование
         CancelCopyCommand = new RelayCommand(_ => CancelCopy(), _ => IsCopying);
+
+        // Команды журнала
+        ToggleLogCommand = new RelayCommand(_ => IsLogExpanded = !IsLogExpanded);
+        ClearLogCommand = new RelayCommand(_ => { CopyLog.Clear(); OnPropertyChanged(nameof(HasLogEntries)); });
 
         // Подписываемся на изменение настроек — пересоздадим FileSystemWatcher
         _settingsViewModel.SettingsChanged += OnSettingsChanged;
@@ -743,6 +805,9 @@ public class MainViewModel : INotifyPropertyChanged
             // Обновляем флаг «скопировано» — кнопка станет залитой
             SetCopiedFlag(file, destinationKey, true);
 
+            // Записываем в журнал
+            AddLogEntry(file.FileName, destinationKey, CopyLogStatus.Success);
+
             if (dest.CopyPathToClipboard)
             {
                 Clipboard.SetText(dest.DestinationPath);
@@ -755,10 +820,16 @@ public class MainViewModel : INotifyPropertyChanged
         }
         else if (wasCancelled)
         {
+            // Записываем в журнал
+            AddLogEntry(file.FileName, destinationKey, CopyLogStatus.Cancelled);
+
             StatusMessage = $"⛔ Копирование отменено: {file.FileName}";
         }
         else
         {
+            // Записываем в журнал
+            AddLogEntry(file.FileName, destinationKey, CopyLogStatus.Error);
+
             StatusMessage = $"❌ Ошибка копирования: {file.FileName} → {destinationKey}";
         }
     }

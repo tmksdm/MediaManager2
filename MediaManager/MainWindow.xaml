@@ -479,23 +479,23 @@
             </Border>
 
 
-            <!-- === STATUS BAR + PROGRESS === -->
+            <!-- === STATUS BAR + PROGRESS (внизу) === -->
             <Border DockPanel.Dock="Bottom" Background="#E0E0E0" Padding="16,6"
-        BorderBrush="#BDBDBD" BorderThickness="0,1,0,0">
+                    BorderBrush="#BDBDBD" BorderThickness="0,1,0,0">
                 <DockPanel>
                     <!-- Кнопка отмены — Click handler вместо Command (надёжнее в borderless-окне) -->
                     <Button DockPanel.Dock="Right"
-                Content="✕ Отмена"
-                Click="CancelCopyButton_Click"
-                FontSize="12" Cursor="Hand"
-                Padding="10,0" Height="22"
-                Margin="6,0,0,0"
-                Foreground="White" Background="#E53935" BorderThickness="0"
-                Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
+                            Content="✕ Отмена"
+                            Click="CancelCopyButton_Click"
+                            FontSize="12" Cursor="Hand"
+                            Padding="10,0" Height="22"
+                            Margin="6,0,0,0"
+                            Foreground="White" Background="#E53935" BorderThickness="0"
+                            Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border Background="{TemplateBinding Background}"
-                            CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                        CornerRadius="3" Padding="{TemplateBinding Padding}">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -510,15 +510,155 @@
                         </Button.Template>
                     </Button>
                     <ProgressBar DockPanel.Dock="Right"
-                     Width="200" Height="16"
-                     Minimum="0" Maximum="100"
-                     Value="{Binding CopyProgress}"
-                     Margin="12,0,0,0"
-                     Foreground="#1565C0"
-                     Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
+                                 Width="200" Height="16"
+                                 Minimum="0" Maximum="100"
+                                 Value="{Binding CopyProgress}"
+                                 Margin="12,0,0,0"
+                                 Foreground="#1565C0"
+                                 Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#616161"
-                   VerticalAlignment="Center"/>
+                               VerticalAlignment="Center"/>
                 </DockPanel>
+            </Border>
+
+            <!-- === ЖУРНАЛ КОПИРОВАНИЙ (над статусной строкой, под списком файлов) === -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="White"
+                    BorderBrush="#E0E0E0" BorderThickness="0,1,0,0"
+                    Visibility="{Binding HasLogEntries, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <!-- Заголовок журнала (всегда видно если есть записи) -->
+                    <DockPanel Background="#FAFAFA" Margin="0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,8,0">
+                            <!-- Кнопка «Очистить» -->
+                            <Button Content="Очистить"
+                                    Command="{Binding ClearLogCommand}"
+                                    FontSize="11" Foreground="#9E9E9E"
+                                    Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand" Padding="8,4" Margin="0,0,4,0">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#F0F0F0"/>
+                                                <Setter Property="Foreground" Value="#616161"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <!-- Кнопка свернуть/развернуть -->
+                            <Button Command="{Binding ToggleLogCommand}"
+                                    FontSize="11" Foreground="#9E9E9E"
+                                    Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand" Padding="8,4">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Content" Value="▲ Свернуть"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLogExpanded}" Value="False">
+                                                <Setter Property="Content" Value="▼ Развернуть"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#F0F0F0"/>
+                                                <Setter Property="Foreground" Value="#616161"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock Text="📋 История копирований" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#616161" VerticalAlignment="Center" Margin="16,6,0,6"/>
+                    </DockPanel>
+
+                    <!-- Список записей (скрывается при сворачивании) -->
+                    <Border MaxHeight="160"
+                            Visibility="{Binding IsLogExpanded, Converter={StaticResource BoolToVis}}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
+                            <ItemsControl ItemsSource="{Binding CopyLog}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="16,4,16,4" BorderBrush="#F0F0F0" BorderThickness="0,0,0,1">
+                                            <DockPanel>
+                                                <!-- Время -->
+                                                <TextBlock DockPanel.Dock="Left"
+                                                           Text="{Binding TimeText}"
+                                                           FontSize="11" FontFamily="Consolas"
+                                                           Foreground="#9E9E9E" VerticalAlignment="Center"
+                                                           Width="60"/>
+                                                <!-- Иконка статуса -->
+                                                <TextBlock DockPanel.Dock="Left"
+                                                           Text="{Binding StatusIcon}"
+                                                           FontSize="12" VerticalAlignment="Center"
+                                                           Margin="0,0,8,0" Width="18"/>
+                                                <!-- Направление справа -->
+                                                <Border DockPanel.Dock="Right"
+                                                        CornerRadius="3" Padding="6,1" Margin="8,0,0,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#E0E0E0"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Success">
+                                                                    <Setter Property="Background" Value="#E8F5E9"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                                    <Setter Property="Background" Value="#FFEBEE"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                                    <Setter Property="Background" Value="#FFF3E0"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding Destination}"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#757575"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Success">
+                                                                        <Setter Property="Foreground" Value="#2E7D32"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                                        <Setter Property="Foreground" Value="#C62828"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                                        <Setter Property="Foreground" Value="#E65100"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                                <!-- Имя файла -->
+                                                <TextBlock Text="{Binding FileName}"
+                                                           FontSize="11" Foreground="#424242"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
             </Border>
 
             <!-- === FILE LIST === -->
