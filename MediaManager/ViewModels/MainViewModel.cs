@@ -7,7 +7,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Threading; // НОВОЕ — для DispatcherTimer
+using System.Windows.Threading; // для DispatcherTimer
 
 namespace MediaManager.ViewModels;
 
@@ -59,7 +59,7 @@ public class MainViewModel : INotifyPropertyChanged
     private const int DebounceDelayMs = 500;
 
     // ======================================================
-    // === НОВОЕ: Таймер периодической проверки статусов ===
+    // === Таймер периодической проверки статусов ===
     // ======================================================
 
     /// <summary>
@@ -69,13 +69,13 @@ public class MainViewModel : INotifyPropertyChanged
     /// если кто-то удалил файл из конечной папки.
     /// Не создаёт нагрузки — проверяются только файлы текущей даты.
     /// </summary>
-    private readonly DispatcherTimer _statusRecheckTimer; // НОВОЕ
+    private readonly DispatcherTimer _statusRecheckTimer;
 
     /// <summary>Интервал фоновой проверки статусов (секунды)</summary>
-    private const int StatusRecheckIntervalSeconds = 30; // НОВОЕ
+    private const int StatusRecheckIntervalSeconds = 30;
 
     /// <summary>Флаг: идёт ли фоновая проверка статусов (защита от наложения)</summary>
-    private bool _isRecheckingStatuses; // НОВОЕ
+    private bool _isRecheckingStatuses;
 
     // --- Свойства ---
 
@@ -90,7 +90,14 @@ public class MainViewModel : INotifyPropertyChanged
                 _selectedDate = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedDateText));
-                // Запускаем асинхронное сканирование (async void — огонь и забудь)
+
+                // === ИСПРАВЛЕНИЕ: при смене даты обновляем список проектов ===
+                // Сбрасываем выбранный проект и панель экспортных имён,
+                // потому что они относились к предыдущей дате.
+                SelectedProject = null;
+                RefreshProjectsForSelectedDate();
+
+                // Запускаем асинхронное сканирование файлов
                 ScanFilesAsync();
             }
         }
@@ -252,7 +259,7 @@ public class MainViewModel : INotifyPropertyChanged
     // === Свойства для выпадающего списка проектов ===
     // ======================================================
 
-    /// <summary>Список проектов (имён подпапок) за сегодняшнюю дату</summary>
+    /// <summary>Список проектов (имён подпапок) за выбранную дату</summary>
     private ObservableCollection<string> _todayProjects = new();
     public ObservableCollection<string> TodayProjects
     {
@@ -260,7 +267,7 @@ public class MainViewModel : INotifyPropertyChanged
         set { _todayProjects = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasTodayProjects)); }
     }
 
-    /// <summary>Есть ли проекты за сегодня (для показа треугольника ▼)</summary>
+    /// <summary>Есть ли проекты за выбранную дату (для показа треугольника ▼)</summary>
     public bool HasTodayProjects => TodayProjects.Count > 0;
 
     /// <summary>Открыт ли выпадающий список проектов</summary>
@@ -349,7 +356,7 @@ public class MainViewModel : INotifyPropertyChanged
         // Подписываемся на изменение настроек — пересоздадим FileSystemWatcher
         _settingsViewModel.SettingsChanged += OnSettingsChanged;
 
-        // НОВОЕ: Создаём таймер периодической проверки статусов копирования.
+        // Создаём таймер периодической проверки статусов копирования.
         // DispatcherTimer работает в UI-потоке — его Tick безопасно обращается к свойствам.
         // Тяжёлая работа (File.Exists по сети) уходит в Task.Run внутри обработчика.
         _statusRecheckTimer = new DispatcherTimer
@@ -362,15 +369,15 @@ public class MainViewModel : INotifyPropertyChanged
         // Первое сканирование при запуске
         ScanFilesAsync();
 
-        // Загружаем список проектов за сегодня при старте
-        RefreshTodayProjects();
+        // Загружаем список проектов за выбранную дату (сегодня) при старте
+        RefreshProjectsForSelectedDate();
 
         // Запускаем FileSystemWatcher на текущие папки поиска
         SetupFileWatchers();
     }
 
     // ======================================================
-    // === НОВОЕ: Фоновая проверка статусов копирования ===
+    // === Фоновая проверка статусов копирования ===
     // ======================================================
 
     /// <summary>
@@ -626,7 +633,7 @@ public class MainViewModel : INotifyPropertyChanged
     /// </summary>
     public void Cleanup()
     {
-        // НОВОЕ: останавливаем таймер проверки статусов
+        // Останавливаем таймер проверки статусов
         _statusRecheckTimer.Stop();
 
         DisposeWatchers();
@@ -710,7 +717,10 @@ public class MainViewModel : INotifyPropertyChanged
     {
         var settings = _settingsViewModel.GetSettings();
 
-        var result = _projectService.CreateProject(ProjectName, DateTime.Today, settings);
+        // Проект всегда создаётся за ВЫБРАННУЮ дату (а не за сегодня),
+        // чтобы пользователь мог создать проект на нужную дату,
+        // даже если перешёл на другую через навигацию.
+        var result = _projectService.CreateProject(ProjectName, SelectedDate, settings);
 
         if (result.Success)
         {
@@ -718,7 +728,7 @@ public class MainViewModel : INotifyPropertyChanged
             ProjectName = string.Empty;
 
             // Обновляем список проектов — появится новый
-            RefreshTodayProjects();
+            RefreshProjectsForSelectedDate();
 
             ScanFilesAsync();
         }
@@ -733,13 +743,13 @@ public class MainViewModel : INotifyPropertyChanged
     // ======================================================
 
     /// <summary>
-    /// Обновляет список проектов за сегодняшнюю дату.
-    /// Вызывается при старте и после создания нового проекта.
+    /// Обновляет список проектов за выбранную дату (SelectedDate).
+    /// Вызывается при старте, после создания нового проекта и при смене даты.
     /// </summary>
-    private void RefreshTodayProjects()
+    private void RefreshProjectsForSelectedDate()
     {
         var settings = _settingsViewModel.GetSettings();
-        var projects = _projectService.GetTodayProjects(DateTime.Today, settings);
+        var projects = _projectService.GetTodayProjects(SelectedDate, settings);
         TodayProjects = new ObservableCollection<string>(projects);
     }
 
@@ -751,7 +761,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         if (!IsProjectListOpen)
         {
-            RefreshTodayProjects();
+            RefreshProjectsForSelectedDate();
         }
         IsProjectListOpen = !IsProjectListOpen;
     }
