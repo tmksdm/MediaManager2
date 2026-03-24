@@ -40,7 +40,7 @@
                 <!-- ГРУППА: Основные папки                       -->
                 <!-- ============================================ -->
                 <TextBlock Grid.Row="0" Grid.ColumnSpan="3"
-                           Text="📁 Основные папки"
+                           Text="Основные папки"
                            FontWeight="Bold" FontSize="14"
                            Margin="0,0,0,8" />
 
@@ -96,7 +96,7 @@
                 <!-- ГРУППА: Панорама / Дайджест                  -->
                 <!-- ============================================ -->
                 <TextBlock Grid.Row="5" Grid.ColumnSpan="3"
-                           Text="🟣 Панорама / Дайджест"
+                           Text="Панорама / Дайджест"
                            FontWeight="Bold" FontSize="14"
                            Foreground="#8E24AA"
                            Margin="0,0,0,8" />
@@ -141,7 +141,7 @@
                 <!-- ГРУППА: Новости                              -->
                 <!-- ============================================ -->
                 <TextBlock Grid.Row="9" Grid.ColumnSpan="3"
-                           Text="🔴 Новости"
+                           Text="Новости"
                            FontWeight="Bold" FontSize="14"
                            Foreground="#E53935"
                            Margin="0,0,0,8" />
@@ -186,7 +186,7 @@
                 <!-- ГРУППА: Архив                                -->
                 <!-- ============================================ -->
                 <TextBlock Grid.Row="13" Grid.ColumnSpan="3"
-                           Text="🟢 Архив (сюжеты)"
+                           Text="Архив (сюжеты)"
                            FontWeight="Bold" FontSize="14"
                            Foreground="#43A047"
                            Margin="0,0,0,8" />
