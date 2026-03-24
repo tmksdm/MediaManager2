@@ -242,7 +242,7 @@ public class ProjectCreationService
         {
             TypeLabel = "ДАЙДЖЕСТ",
             Name = $"ПАНОРАМА_ДАЙДЖЕСТ_00_{datePrefix}_{processedName}_",
-            TypeColor = "#8E24AA"
+            TypeColor = "#5C6BC0"
         });
 
         return names;

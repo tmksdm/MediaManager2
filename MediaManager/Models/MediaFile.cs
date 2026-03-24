@@ -65,11 +65,15 @@ public class MediaFile : INotifyPropertyChanged
         _ => "???"
     };
 
-    /// <summary>Цвет бейджа в зависимости от типа (hex-строка).</summary>
+    /// <summary>
+    /// Цвет бейджа в зависимости от типа (hex-строка).
+    /// ПАНОРАМА — фиолетовый (#8E24AA), ДАЙДЖЕСТ — индиго (#5C6BC0).
+    /// Оба из «холодной» палитры (родство), но визуально различаются.
+    /// </summary>
     public string TypeColor => FileType switch
     {
         MediaFileType.Panorama => "#8E24AA",
-        MediaFileType.Digest => "#8E24AA",
+        MediaFileType.Digest => "#5C6BC0",
         MediaFileType.News => "#E53935",
         MediaFileType.Archive => "#43A047",
         _ => "#9E9E9E"

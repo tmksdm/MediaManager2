@@ -443,13 +443,16 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <!-- Цветной бейдж типа -->
                                                 <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
-                                                        MinWidth="70">
+        MinWidth="70">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
                                                             <Setter Property="Background" Value="#9E9E9E"/>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#8E24AA">
                                                                     <Setter Property="Background" Value="#8E24AA"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#5C6BC0">
+                                                                    <Setter Property="Background" Value="#5C6BC0"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#E53935">
                                                                     <Setter Property="Background" Value="#E53935"/>
@@ -782,6 +785,7 @@
                                                                 </StackPanel>
 
                                                                 <!-- ДАЙДЖЕСТ -->
+                                                                <!-- ДАЙДЖЕСТ -->
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <StackPanel.Style>
                                                                         <Style TargetType="StackPanel">
@@ -796,13 +800,13 @@
                                                                     <Button Content="📁 Site2" Tag="Site2 (архив)" Click="CopyButton_Click">
                                                                         <Button.Style>
                                                                             <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
-                                                                                <Setter Property="Foreground" Value="#7B1FA2"/>
-                                                                                <Setter Property="BorderBrush" Value="#7B1FA2"/>
+                                                                                <Setter Property="Foreground" Value="#3F51B5"/>
+                                                                                <Setter Property="BorderBrush" Value="#3F51B5"/>
                                                                                 <Style.Triggers>
                                                                                     <DataTrigger Binding="{Binding IsCopiedToSite2}" Value="True">
-                                                                                        <Setter Property="Background" Value="#7B1FA2"/>
+                                                                                        <Setter Property="Background" Value="#3F51B5"/>
                                                                                         <Setter Property="Foreground" Value="White"/>
-                                                                                        <Setter Property="BorderBrush" Value="#7B1FA2"/>
+                                                                                        <Setter Property="BorderBrush" Value="#3F51B5"/>
                                                                                     </DataTrigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
@@ -811,13 +815,13 @@
                                                                     <Button Content="📡 Эфир" Tag="Эфир" Click="CopyButton_Click">
                                                                         <Button.Style>
                                                                             <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
-                                                                                <Setter Property="Foreground" Value="#6A1B9A"/>
-                                                                                <Setter Property="BorderBrush" Value="#6A1B9A"/>
+                                                                                <Setter Property="Foreground" Value="#3949AB"/>
+                                                                                <Setter Property="BorderBrush" Value="#3949AB"/>
                                                                                 <Style.Triggers>
                                                                                     <DataTrigger Binding="{Binding IsCopiedToEfir}" Value="True">
-                                                                                        <Setter Property="Background" Value="#6A1B9A"/>
+                                                                                        <Setter Property="Background" Value="#3949AB"/>
                                                                                         <Setter Property="Foreground" Value="White"/>
-                                                                                        <Setter Property="BorderBrush" Value="#6A1B9A"/>
+                                                                                        <Setter Property="BorderBrush" Value="#3949AB"/>
                                                                                     </DataTrigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
@@ -826,13 +830,13 @@
                                                                     <Button Content="🖥 Кодер" Tag="Кодер Site" Click="CopyButton_Click">
                                                                         <Button.Style>
                                                                             <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
-                                                                                <Setter Property="Foreground" Value="#4A148C"/>
-                                                                                <Setter Property="BorderBrush" Value="#4A148C"/>
+                                                                                <Setter Property="Foreground" Value="#283593"/>
+                                                                                <Setter Property="BorderBrush" Value="#283593"/>
                                                                                 <Style.Triggers>
                                                                                     <DataTrigger Binding="{Binding IsCopiedToCoder}" Value="True">
-                                                                                        <Setter Property="Background" Value="#4A148C"/>
+                                                                                        <Setter Property="Background" Value="#283593"/>
                                                                                         <Setter Property="Foreground" Value="White"/>
-                                                                                        <Setter Property="BorderBrush" Value="#4A148C"/>
+                                                                                        <Setter Property="BorderBrush" Value="#283593"/>
                                                                                     </DataTrigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
@@ -940,6 +944,9 @@
                                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#8E24AA">
                                                                                     <Setter Property="Background" Value="#8E24AA"/>
                                                                                 </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#5C6BC0">
+                                                                                    <Setter Property="Background" Value="#5C6BC0"/>
+                                                                                </DataTrigger>
                                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#E53935">
                                                                                     <Setter Property="Background" Value="#E53935"/>
                                                                                 </DataTrigger>
@@ -950,7 +957,7 @@
                                                                         </Style>
                                                                     </Border.Style>
                                                                     <TextBlock Text="{Binding TypeLabel}" Foreground="White"
-                                       FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+               FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                                                                 </Border>
                                                                 <!-- Имя файла — кликабельная ссылка -->
                                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13"
