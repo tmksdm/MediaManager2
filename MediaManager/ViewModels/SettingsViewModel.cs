@@ -61,6 +61,20 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    public string AfterEffectsTemplateFile
+    {
+        get => _settings.AfterEffectsTemplateFile;
+        set
+        {
+            if (_settings.AfterEffectsTemplateFile != value)
+            {
+                _settings.AfterEffectsTemplateFile = value;
+                OnPropertyChanged();
+                Save();
+            }
+        }
+    }
+
     public string SearchFolder
     {
         get => _settings.SearchFolder;
@@ -197,6 +211,7 @@ public class SettingsViewModel : INotifyPropertyChanged
 
     public RelayCommand BrowseProjectBaseFolderCommand { get; }
     public RelayCommand BrowseSourceTemplateFileCommand { get; }
+    public RelayCommand BrowseAfterEffectsTemplateFileCommand { get; }
     public RelayCommand BrowseSearchFolderCommand { get; }
     public RelayCommand BrowseAdditionalSearchFolderCommand { get; }
     public RelayCommand BrowseSite2ArchiveCommand { get; }
@@ -220,7 +235,10 @@ public class SettingsViewModel : INotifyPropertyChanged
         // Для папок — открывается диалог выбора папки
         // Для файла шаблона — диалог выбора файла
         BrowseProjectBaseFolderCommand = new RelayCommand(_ => BrowseFolder(v => ProjectBaseFolder = v));
-        BrowseSourceTemplateFileCommand = new RelayCommand(_ => BrowseFile(v => SourceTemplateFile = v));
+        BrowseSourceTemplateFileCommand = new RelayCommand(_ => BrowseFile(v => SourceTemplateFile = v,
+            "Premiere Pro Project (*.prproj)|*.prproj|Все файлы (*.*)|*.*"));
+        BrowseAfterEffectsTemplateFileCommand = new RelayCommand(_ => BrowseFile(v => AfterEffectsTemplateFile = v,
+            "After Effects Project (*.aep)|*.aep|Все файлы (*.*)|*.*"));
         BrowseSearchFolderCommand = new RelayCommand(_ => BrowseFolder(v => SearchFolder = v));
         BrowseAdditionalSearchFolderCommand = new RelayCommand(_ => BrowseFolder(v => AdditionalSearchFolder = v));
         BrowseSite2ArchiveCommand = new RelayCommand(_ => BrowseFolder(v => Site2Archive = v));
@@ -262,14 +280,14 @@ public class SettingsViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Открыть диалог выбора файла (для шаблона .prproj).
+    /// Открыть диалог выбора файла с указанным фильтром.
     /// </summary>
-    private static void BrowseFile(Action<string> setter)
+    private static void BrowseFile(Action<string> setter, string filter)
     {
         var dialog = new OpenFileDialog
         {
             Title = "Выберите файл шаблона",
-            Filter = "Premiere Pro Project (*.prproj)|*.prproj|Все файлы (*.*)|*.*"
+            Filter = filter
         };
 
         if (dialog.ShowDialog() == true)

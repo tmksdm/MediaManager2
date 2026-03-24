@@ -21,6 +21,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <!-- Заголовок: Панорама / Дайджест -->
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -56,7 +57,7 @@
                            Command="{Binding BrowseProjectBaseFolderCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
-                <!-- Файл шаблона -->
+                <!-- Файл шаблона Premiere Pro -->
                 <TextBlock Grid.Row="2" Grid.Column="0"
                            Text="Файл шаблона (.prproj):"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
@@ -68,26 +69,38 @@
                            Command="{Binding BrowseSourceTemplateFileCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
-                <!-- Папка поиска -->
+                <!-- Файл шаблона After Effects -->
                 <TextBlock Grid.Row="3" Grid.Column="0"
-                           Text="Папка поиска файлов:"
+                           Text="Файл шаблона (.aep):"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
                 <TextBox   Grid.Row="3" Grid.Column="1"
-                           Text="{Binding SearchFolder, UpdateSourceTrigger=LostFocus}"
+                           Text="{Binding AfterEffectsTemplateFile, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
                 <Button    Grid.Row="3" Grid.Column="2"
+                           Content="Обзор..."
+                           Command="{Binding BrowseAfterEffectsTemplateFileCommand}"
+                           VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
+
+                <!-- Папка поиска -->
+                <TextBlock Grid.Row="4" Grid.Column="0"
+                           Text="Папка поиска файлов:"
+                           VerticalAlignment="Center" Margin="0,0,8,6" />
+                <TextBox   Grid.Row="4" Grid.Column="1"
+                           Text="{Binding SearchFolder, UpdateSourceTrigger=LostFocus}"
+                           VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
+                <Button    Grid.Row="4" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseSearchFolderCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
                 <!-- Доп. папка поиска -->
-                <TextBlock Grid.Row="4" Grid.Column="0"
+                <TextBlock Grid.Row="5" Grid.Column="0"
                            Text="Доп. папка поиска:"
                            VerticalAlignment="Center" Margin="0,0,8,12" />
-                <TextBox   Grid.Row="4" Grid.Column="1"
+                <TextBox   Grid.Row="5" Grid.Column="1"
                            Text="{Binding AdditionalSearchFolder, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,12" Padding="4" />
-                <Button    Grid.Row="4" Grid.Column="2"
+                <Button    Grid.Row="5" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseAdditionalSearchFolderCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,12" Padding="8,4" />
@@ -95,44 +108,44 @@
                 <!-- ============================================ -->
                 <!-- ГРУППА: Панорама / Дайджест                  -->
                 <!-- ============================================ -->
-                <TextBlock Grid.Row="5" Grid.ColumnSpan="3"
+                <TextBlock Grid.Row="6" Grid.ColumnSpan="3"
                            Text="Панорама / Дайджест"
                            FontWeight="Bold" FontSize="14"
                            Foreground="#8E24AA"
                            Margin="0,0,0,8" />
 
                 <!-- Site2 архив -->
-                <TextBlock Grid.Row="6" Grid.Column="0"
+                <TextBlock Grid.Row="7" Grid.Column="0"
                            Text="Site2 (архив):"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox   Grid.Row="6" Grid.Column="1"
+                <TextBox   Grid.Row="7" Grid.Column="1"
                            Text="{Binding Site2Archive, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
-                <Button    Grid.Row="6" Grid.Column="2"
+                <Button    Grid.Row="7" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseSite2ArchiveCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
                 <!-- Эфир -->
-                <TextBlock Grid.Row="7" Grid.Column="0"
+                <TextBlock Grid.Row="8" Grid.Column="0"
                            Text="Эфир (вещание):"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox   Grid.Row="7" Grid.Column="1"
+                <TextBox   Grid.Row="8" Grid.Column="1"
                            Text="{Binding EfirPanorama, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
-                <Button    Grid.Row="7" Grid.Column="2"
+                <Button    Grid.Row="8" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseEfirPanoramaCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
                 <!-- Кодер Site -->
-                <TextBlock Grid.Row="8" Grid.Column="0"
+                <TextBlock Grid.Row="9" Grid.Column="0"
                            Text="Кодер Site:"
                            VerticalAlignment="Center" Margin="0,0,8,12" />
-                <TextBox   Grid.Row="8" Grid.Column="1"
+                <TextBox   Grid.Row="9" Grid.Column="1"
                            Text="{Binding CoderSite, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,12" Padding="4" />
-                <Button    Grid.Row="8" Grid.Column="2"
+                <Button    Grid.Row="9" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseCoderSiteCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,12" Padding="8,4" />
@@ -140,44 +153,44 @@
                 <!-- ============================================ -->
                 <!-- ГРУППА: Новости                              -->
                 <!-- ============================================ -->
-                <TextBlock Grid.Row="9" Grid.ColumnSpan="3"
+                <TextBlock Grid.Row="10" Grid.ColumnSpan="3"
                            Text="Новости"
                            FontWeight="Bold" FontSize="14"
                            Foreground="#E53935"
                            Margin="0,0,0,8" />
 
                 <!-- Хранилище новостей -->
-                <TextBlock Grid.Row="10" Grid.Column="0"
+                <TextBlock Grid.Row="11" Grid.Column="0"
                            Text="Хранилище новостей:"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox   Grid.Row="10" Grid.Column="1"
+                <TextBox   Grid.Row="11" Grid.Column="1"
                            Text="{Binding NewsStorage, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
-                <Button    Grid.Row="10" Grid.Column="2"
+                <Button    Grid.Row="11" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseNewsStorageCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
                 <!-- Эфир 25к -->
-                <TextBlock Grid.Row="11" Grid.Column="0"
+                <TextBlock Grid.Row="12" Grid.Column="0"
                            Text="Эфир 25к:"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox   Grid.Row="11" Grid.Column="1"
+                <TextBox   Grid.Row="12" Grid.Column="1"
                            Text="{Binding NewsEfir25, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
-                <Button    Grid.Row="11" Grid.Column="2"
+                <Button    Grid.Row="12" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseNewsEfir25Command}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />
 
                 <!-- Кодер 25к -->
-                <TextBlock Grid.Row="12" Grid.Column="0"
+                <TextBlock Grid.Row="13" Grid.Column="0"
                            Text="Кодер 25к:"
                            VerticalAlignment="Center" Margin="0,0,8,12" />
-                <TextBox   Grid.Row="12" Grid.Column="1"
+                <TextBox   Grid.Row="13" Grid.Column="1"
                            Text="{Binding Coder25, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,12" Padding="4" />
-                <Button    Grid.Row="12" Grid.Column="2"
+                <Button    Grid.Row="13" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseCoder25Command}"
                            VerticalAlignment="Center" Margin="0,0,0,12" Padding="8,4" />
@@ -185,20 +198,20 @@
                 <!-- ============================================ -->
                 <!-- ГРУППА: Архив                                -->
                 <!-- ============================================ -->
-                <TextBlock Grid.Row="13" Grid.ColumnSpan="3"
+                <TextBlock Grid.Row="14" Grid.ColumnSpan="3"
                            Text="Архив (сюжеты)"
                            FontWeight="Bold" FontSize="14"
                            Foreground="#43A047"
                            Margin="0,0,0,8" />
 
                 <!-- Сюжеты панорамы -->
-                <TextBlock Grid.Row="14" Grid.Column="0"
+                <TextBlock Grid.Row="15" Grid.Column="0"
                            Text="Сюжеты панорамы:"
                            VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox   Grid.Row="14" Grid.Column="1"
+                <TextBox   Grid.Row="15" Grid.Column="1"
                            Text="{Binding ArchiveStories, UpdateSourceTrigger=LostFocus}"
                            VerticalAlignment="Center" Margin="0,0,8,6" Padding="4" />
-                <Button    Grid.Row="14" Grid.Column="2"
+                <Button    Grid.Row="15" Grid.Column="2"
                            Content="Обзор..."
                            Command="{Binding BrowseArchiveStoriesCommand}"
                            VerticalAlignment="Center" Margin="0,0,0,6" Padding="8,4" />

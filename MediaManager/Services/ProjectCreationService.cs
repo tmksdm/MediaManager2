@@ -5,7 +5,7 @@ namespace MediaManager.Services;
 
 /// <summary>
 /// Сервис создания проектов.
-/// Создаёт папку + .prproj файл (без пустых .mp4).
+/// Создаёт папку + .prproj файл + .aep файл (если задан шаблон).
 /// Умеет сканировать базовую папку и генерировать имена для экспорта.
 /// </summary>
 public class ProjectCreationService
@@ -15,10 +15,16 @@ public class ProjectCreationService
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
         public string ProjectFolderPath { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Путь к созданному .prproj файлу (для автозапуска).
+        /// Пустой, если шаблон не был скопирован.
+        /// </summary>
+        public string CreatedPrprojPath { get; set; } = string.Empty;
     }
 
     /// <summary>
-    /// Создать проект: подпапку прямо в ProjectBaseFolder, шаблон .prproj.
+    /// Создать проект: подпапку прямо в ProjectBaseFolder, шаблон .prproj, шаблон .aep (если задан).
     /// Промежуточная папка с датой НЕ создаётся — проект попадает сразу в базовую папку.
     /// Пустые .mp4-заглушки больше НЕ создаются.
     /// </summary>
@@ -88,6 +94,8 @@ public class ProjectCreationService
         }
 
         // === 6. Копируем шаблон .prproj ===
+        string createdPrprojPath = string.Empty;
+
         if (!string.IsNullOrWhiteSpace(settings.SourceTemplateFile))
         {
             try
@@ -97,24 +105,48 @@ public class ProjectCreationService
                     string templateFileName = $"{datePrefix}_{processedName}.prproj";
                     string templateDestPath = Path.Combine(projectFolderPath, templateFileName);
                     File.Copy(settings.SourceTemplateFile, templateDestPath);
+                    createdPrprojPath = templateDestPath;
                 }
                 else
                 {
-                    LogService.Error($"Файл шаблона не найден: {settings.SourceTemplateFile}");
+                    LogService.Error($"Файл шаблона Premiere не найден: {settings.SourceTemplateFile}");
                 }
             }
             catch (Exception ex)
             {
-                LogService.Error($"Ошибка копирования шаблона", ex);
+                LogService.Error($"Ошибка копирования шаблона Premiere", ex);
             }
         }
 
-        // === 7. Возвращаем результат ===
+        // === 7. Копируем шаблон .aep (After Effects), если задан ===
+        if (!string.IsNullOrWhiteSpace(settings.AfterEffectsTemplateFile))
+        {
+            try
+            {
+                if (File.Exists(settings.AfterEffectsTemplateFile))
+                {
+                    string aepFileName = $"{datePrefix}_{processedName}.aep";
+                    string aepDestPath = Path.Combine(projectFolderPath, aepFileName);
+                    File.Copy(settings.AfterEffectsTemplateFile, aepDestPath);
+                }
+                else
+                {
+                    LogService.Error($"Файл шаблона After Effects не найден: {settings.AfterEffectsTemplateFile}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"Ошибка копирования шаблона After Effects", ex);
+            }
+        }
+
+        // === 8. Возвращаем результат ===
         return new ProjectCreationResult
         {
             Success = true,
             Message = $"Проект создан: {subFolderName}",
-            ProjectFolderPath = projectFolderPath
+            ProjectFolderPath = projectFolderPath,
+            CreatedPrprojPath = createdPrprojPath
         };
     }
 

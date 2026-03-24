@@ -14,6 +14,9 @@ public class AppSettings
     /// <summary>Шаблон .prproj файла для новых проектов</summary>
     public string SourceTemplateFile { get; set; } = @"\\Archive1\графичекое_оформление\Test.prproj";
 
+    /// <summary>Шаблон .aep файла After Effects (необязательный)</summary>
+    public string AfterEffectsTemplateFile { get; set; } = string.Empty;
+
     /// <summary>Папка для поиска готовых .mp4 файлов</summary>
     public string SearchFolder { get; set; } = @"D:\Projects\ПАНОРАМА";
 

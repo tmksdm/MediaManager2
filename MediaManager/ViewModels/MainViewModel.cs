@@ -731,12 +731,33 @@ public class MainViewModel : INotifyPropertyChanged
             RefreshProjectsForSelectedDate();
 
             ScanFilesAsync();
+
+            // Автозапуск созданного .prproj файла в Premiere Pro
+            if (!string.IsNullOrEmpty(result.CreatedPrprojPath))
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = result.CreatedPrprojPath,
+                        UseShellExecute = true // Откроется в Premiere Pro через ассоциацию Windows
+                    });
+                }
+                catch (Exception ex)
+                {
+                    // Не блокируем работу, если Premiere не запустился —
+                    // проект всё равно создан успешно
+                    StatusMessage = $"✅ Проект создан, но не удалось открыть .prproj: {ex.Message}";
+                    LogService.Error("Ошибка автозапуска .prproj", ex);
+                }
+            }
         }
         else
         {
             StatusMessage = $"❌ {result.Message}";
         }
     }
+
 
     // ======================================================
     // === Выпадающий список проектов ===
