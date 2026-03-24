@@ -59,6 +59,20 @@ public class MainViewModel : INotifyPropertyChanged
     private const int DebounceDelayMs = 500;
 
     // ======================================================
+    // === FileSystemWatcher — автообновление списка проектов ===
+    // ======================================================
+
+    /// <summary>
+    /// Watcher для папки проектов (ProjectBaseFolder).
+    /// Следит за созданием / удалением / переименованием ПАПОК.
+    /// При срабатывании — обновляет выпадающий список проектов.
+    /// </summary>
+    private FileSystemWatcher? _projectWatcher;
+
+    /// <summary>Отдельный debounce для обновления списка проектов</summary>
+    private CancellationTokenSource? _projectDebounceCts;
+
+    // ======================================================
     // === Таймер периодической проверки статусов ===
     // ======================================================
 
@@ -374,6 +388,9 @@ public class MainViewModel : INotifyPropertyChanged
 
         // Запускаем FileSystemWatcher на текущие папки поиска
         SetupFileWatchers();
+
+        // Запускаем FileSystemWatcher на папку проектов
+        SetupProjectWatcher();
     }
 
     // ======================================================
@@ -456,7 +473,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     // ======================================================
-    // === FileSystemWatcher — автообновление ===
+    // === FileSystemWatcher — автообновление списка файлов ===
     // ======================================================
 
     /// <summary>
@@ -467,22 +484,22 @@ public class MainViewModel : INotifyPropertyChanged
     private void SetupFileWatchers()
     {
         // Сначала убиваем старые watchers (если были)
-        DisposeWatchers();
+        DisposeFileWatchers();
 
         var settings = _settingsViewModel.GetSettings();
 
         // Watcher для основной папки
-        _watcher1 = CreateWatcher(settings.SearchFolder);
+        _watcher1 = CreateFileWatcher(settings.SearchFolder);
 
         // Watcher для дополнительной папки (если указана)
-        _watcher2 = CreateWatcher(settings.AdditionalSearchFolder);
+        _watcher2 = CreateFileWatcher(settings.AdditionalSearchFolder);
     }
 
     /// <summary>
     /// Создаёт и настраивает один FileSystemWatcher для указанной папки.
     /// Возвращает null, если папка пустая или не существует.
     /// </summary>
-    private FileSystemWatcher? CreateWatcher(string folderPath)
+    private FileSystemWatcher? CreateFileWatcher(string folderPath)
     {
         // Пропускаем пустые пути
         if (string.IsNullOrWhiteSpace(folderPath))
@@ -598,6 +615,142 @@ public class MainViewModel : INotifyPropertyChanged
         }, token);
     }
 
+    // ======================================================
+    // === FileSystemWatcher — автообновление списка проектов ===
+    // ======================================================
+
+    /// <summary>
+    /// Создаёт FileSystemWatcher для папки проектов (ProjectBaseFolder).
+    /// Следит за созданием / удалением / переименованием ПАПОК (не файлов).
+    /// При срабатывании — обновляет выпадающий список проектов с debounce.
+    /// 
+    /// Не создаёт нагрузки: FileSystemWatcher работает на уровне ОС —
+    /// ядро Windows просто отправляет уведомление, когда папка появляется
+    /// или исчезает. Никакого периодического сканирования нет.
+    /// </summary>
+    private void SetupProjectWatcher()
+    {
+        // Убиваем старый watcher (если был)
+        DisposeProjectWatcher();
+
+        var settings = _settingsViewModel.GetSettings();
+
+        if (string.IsNullOrWhiteSpace(settings.ProjectBaseFolder))
+            return;
+
+        if (!Directory.Exists(settings.ProjectBaseFolder))
+            return;
+
+        try
+        {
+            _projectWatcher = new FileSystemWatcher(settings.ProjectBaseFolder)
+            {
+                // Следим за всеми элементами (папки не имеют расширений)
+                Filter = "*",
+
+                // Только верхний уровень — проекты лежат прямо в базовой папке
+                IncludeSubdirectories = false,
+
+                // Отслеживаем имена папок (создание, удаление, переименование)
+                NotifyFilter = NotifyFilters.DirectoryName,
+
+                // Включаем мониторинг
+                EnableRaisingEvents = true
+            };
+
+            // Подписываемся на события папок
+            _projectWatcher.Created += OnProjectFolderChanged;
+            _projectWatcher.Deleted += OnProjectFolderChanged;
+            _projectWatcher.Renamed += OnProjectFolderRenamed;
+            _projectWatcher.Error += OnProjectWatcherError;
+        }
+        catch (Exception ex)
+        {
+            LogService.Error($"Не удалось создать FileSystemWatcher для папки проектов: {settings.ProjectBaseFolder}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Обработчик создания/удаления папки в ProjectBaseFolder.
+    /// Вызывается из фонового потока — нельзя обращаться к UI напрямую.
+    /// </summary>
+    private void OnProjectFolderChanged(object sender, FileSystemEventArgs e)
+    {
+        ScheduleDebouncedProjectRefresh();
+    }
+
+    /// <summary>
+    /// Обработчик переименования папки в ProjectBaseFolder.
+    /// </summary>
+    private void OnProjectFolderRenamed(object sender, RenamedEventArgs e)
+    {
+        ScheduleDebouncedProjectRefresh();
+    }
+
+    /// <summary>
+    /// Обработчик ошибок watcher-а проектов.
+    /// </summary>
+    private void OnProjectWatcherError(object sender, ErrorEventArgs e)
+    {
+        LogService.Error("Ошибка FileSystemWatcher (папка проектов)", e.GetException());
+        ScheduleDebouncedProjectRefresh();
+    }
+
+    /// <summary>
+    /// Запланировать обновление списка проектов через 500мс (debounce).
+    /// Аналогично ScheduleDebouncedScan(), но для проектов.
+    /// Использует отдельный CancellationTokenSource, чтобы не конфликтовать
+    /// с debounce файлового сканирования.
+    /// </summary>
+    private void ScheduleDebouncedProjectRefresh()
+    {
+        // Отменяем предыдущий отложенный refresh (если был)
+        _projectDebounceCts?.Cancel();
+        _projectDebounceCts?.Dispose();
+        _projectDebounceCts = new CancellationTokenSource();
+
+        var token = _projectDebounceCts.Token;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(DebounceDelayMs, token);
+
+                // Обновляем список проектов в UI-потоке
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    RefreshProjectsForSelectedDate();
+
+                    // Если выбранный проект был удалён — сбрасываем панель экспортных имён
+                    if (SelectedProject != null && !TodayProjects.Contains(SelectedProject))
+                    {
+                        SelectedProject = null;
+                    }
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                // Нормально — отменён новым событием
+            }
+        }, token);
+    }
+
+    /// <summary>
+    /// Останавливает и освобождает watcher папки проектов.
+    /// </summary>
+    private void DisposeProjectWatcher()
+    {
+        if (_projectWatcher != null)
+        {
+            _projectWatcher.EnableRaisingEvents = false;
+            _projectWatcher.Dispose();
+            _projectWatcher = null;
+        }
+    }
+
+    // ======================================================
+
     /// <summary>
     /// Вызывается при изменении настроек (пользователь поменял папки поиска).
     /// Пересоздаём watchers для новых папок.
@@ -605,13 +758,14 @@ public class MainViewModel : INotifyPropertyChanged
     private void OnSettingsChanged()
     {
         SetupFileWatchers();
+        SetupProjectWatcher(); // Пересоздаём watcher проектов — путь мог измениться
     }
 
     /// <summary>
-    /// Останавливает и освобождает все FileSystemWatcher.
+    /// Останавливает и освобождает watchers файлов (.mp4).
     /// Вызывается перед пересозданием и при закрытии приложения.
     /// </summary>
-    private void DisposeWatchers()
+    private void DisposeFileWatchers()
     {
         if (_watcher1 != null)
         {
@@ -636,9 +790,12 @@ public class MainViewModel : INotifyPropertyChanged
         // Останавливаем таймер проверки статусов
         _statusRecheckTimer.Stop();
 
-        DisposeWatchers();
+        DisposeFileWatchers();
+        DisposeProjectWatcher();
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
+        _projectDebounceCts?.Cancel();
+        _projectDebounceCts?.Dispose();
         _settingsViewModel.SettingsChanged -= OnSettingsChanged;
     }
 
@@ -1127,6 +1284,7 @@ public class MainViewModel : INotifyPropertyChanged
         int lastOne = count % 10;
         if (lastTwo >= 11 && lastTwo <= 19) return "папках";
         if (lastOne == 1) return "папке";
+        if (lastOne >= 2 && lastOne <= 4) return "папках";
         return "папках";
     }
 }
