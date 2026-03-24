@@ -228,7 +228,7 @@ public class ProjectCreationService
         {
             TypeLabel = "НОВОСТИ",
             Name = $"НОВОСТИ_{datePrefixCompact}_{newsName}_",
-            TypeColor = "#E53935"
+            TypeColor = "#C62828"
         });
 
         names.Add(new ExportName

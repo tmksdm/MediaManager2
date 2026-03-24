@@ -74,7 +74,7 @@ public class MediaFile : INotifyPropertyChanged
     {
         MediaFileType.Panorama => "#8E24AA",
         MediaFileType.Digest => "#5C6BC0",
-        MediaFileType.News => "#E53935",
+        MediaFileType.News => "#C62828",
         MediaFileType.Archive => "#43A047",
         _ => "#9E9E9E"
     };

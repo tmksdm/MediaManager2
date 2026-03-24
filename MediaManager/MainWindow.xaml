@@ -185,7 +185,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E53935"/>
+                                <Setter Property="Background" Value="#C62828"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter Property="Background" Value="#C62828"/>
@@ -273,7 +273,11 @@
                                 Style="{StaticResource CloseButtonStyle}"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <TextBlock Text="📺" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Viewbox Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="White" Data="M21,17 L3,17 L3,5 L21,5 L21,17 Z M1,5 C1,3.9 1.9,3 3,3 L21,3 C22.1,3 23,3.9 23,5 L23,17 C23,18.1 22.1,19 21,19 L13,19 L13,21 L16,21 L16,23 L8,23 L8,21 L11,21 L11,19 L3,19 C1.9,19 1,18.1 1,17 L1,5 Z"/>
+                            </Canvas>
+                        </Viewbox>
                         <TextBlock Text="Медиа-менеджер" FontSize="15" FontWeight="SemiBold"
                                    Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -454,8 +458,8 @@
                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#5C6BC0">
                                                                     <Setter Property="Background" Value="#5C6BC0"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#E53935">
-                                                                    <Setter Property="Background" Value="#E53935"/>
+                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#C62828">
+                                                                    <Setter Property="Background" Value="#C62828"/>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#43A047">
                                                                     <Setter Property="Background" Value="#43A047"/>
@@ -494,7 +498,7 @@
                             FontSize="12" Cursor="Hand"
                             Padding="10,0" Height="22"
                             Margin="6,0,0,0"
-                            Foreground="White" Background="#E53935" BorderThickness="0"
+                            Foreground="White" Background="#C62828" BorderThickness="0"
                             Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -947,8 +951,8 @@
                                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#5C6BC0">
                                                                                     <Setter Property="Background" Value="#5C6BC0"/>
                                                                                 </DataTrigger>
-                                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#E53935">
-                                                                                    <Setter Property="Background" Value="#E53935"/>
+                                                                                <DataTrigger Binding="{Binding TypeColor}" Value="#C62828">
+                                                                                    <Setter Property="Background" Value="#C62828"/>
                                                                                 </DataTrigger>
                                                                                 <DataTrigger Binding="{Binding TypeColor}" Value="#43A047">
                                                                                     <Setter Property="Background" Value="#43A047"/>
