@@ -6,7 +6,7 @@ namespace MediaManager.Services;
 /// <summary>
 /// Сервис создания проектов.
 /// Создаёт папку + .prproj файл (без пустых .mp4).
-/// Умеет сканировать папку даты и генерировать имена для экспорта.
+/// Умеет сканировать базовую папку и генерировать имена для экспорта.
 /// </summary>
 public class ProjectCreationService
 {
@@ -18,7 +18,8 @@ public class ProjectCreationService
     }
 
     /// <summary>
-    /// Создать проект: папку с датой, подпапку, шаблон .prproj.
+    /// Создать проект: подпапку прямо в ProjectBaseFolder, шаблон .prproj.
+    /// Промежуточная папка с датой НЕ создаётся — проект попадает сразу в базовую папку.
     /// Пустые .mp4-заглушки больше НЕ создаются.
     /// </summary>
     public ProjectCreationResult CreateProject(string rawName, DateTime date, AppSettings settings)
@@ -39,28 +40,29 @@ public class ProjectCreationService
         // === 3. Формируем компоненты даты ===
         string mm = date.Month.ToString("D2");
         string dd = date.Day.ToString("D2");
-        string dateFolderName = date.ToString("dd.MM.yyyy");
         string datePrefix = $"{mm}_{dd}";
 
-        // === 4. Создаём папку даты ===
-        string dateFolderPath = Path.Combine(settings.ProjectBaseFolder, dateFolderName);
-        try
+        // === 4. Проверяем, что базовая папка существует ===
+        if (!Directory.Exists(settings.ProjectBaseFolder))
         {
-            Directory.CreateDirectory(dateFolderPath);
-        }
-        catch (Exception ex)
-        {
-            LogService.Error($"Не удалось создать папку даты: {dateFolderPath}", ex);
-            return new ProjectCreationResult
+            try
             {
-                Success = false,
-                Message = $"Не удалось создать папку даты: {ex.Message}"
-            };
+                Directory.CreateDirectory(settings.ProjectBaseFolder);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"Не удалось создать базовую папку: {settings.ProjectBaseFolder}", ex);
+                return new ProjectCreationResult
+                {
+                    Success = false,
+                    Message = $"Не удалось создать базовую папку: {ex.Message}"
+                };
+            }
         }
 
-        // === 5. Создаём подпапку проекта ===
+        // === 5. Создаём подпапку проекта прямо в базовой папке ===
         string subFolderName = $"{datePrefix}_{processedName}";
-        string projectFolderPath = Path.Combine(dateFolderPath, subFolderName);
+        string projectFolderPath = Path.Combine(settings.ProjectBaseFolder, subFolderName);
 
         if (Directory.Exists(projectFolderPath))
         {
@@ -118,29 +120,26 @@ public class ProjectCreationService
 
     /// <summary>
     /// Получить список проектов (имён подпапок) за указанную дату.
-    /// Сканирует папку DD.MM.YYYY внутри базовой папки проектов.
+    /// Сканирует ProjectBaseFolder напрямую (без промежуточной папки даты).
     /// Возвращает только папки с префиксом MM_DD_ (созданные через приложение).
     /// </summary>
     public List<string> GetTodayProjects(DateTime date, AppSettings settings)
     {
         var projects = new List<string>();
 
-        string dateFolderName = date.ToString("dd.MM.yyyy");
-        string dateFolderPath = Path.Combine(settings.ProjectBaseFolder, dateFolderName);
-
-        if (!Directory.Exists(dateFolderPath))
+        if (!Directory.Exists(settings.ProjectBaseFolder))
             return projects;
 
-        // Формируем ожидаемый префикс для текущей даты: "MM_DD_"
+        // Формируем ожидаемый префикс для указанной даты: "MM_DD_"
         // Например, для 24 марта — "03_24_"
         // Только папки с таким префиксом считаются проектами,
-        // созданными через приложение. Остальные (АНОНС_2022, Выпуск_Болванка и т.д.) — игнорируются.
+        // созданными через приложение. Остальные — игнорируются.
         string expectedPrefix = $"{date.Month:D2}_{date.Day:D2}_";
 
         try
         {
-            // Получаем все подпапки в папке даты
-            var subDirs = Directory.GetDirectories(dateFolderPath);
+            // Получаем подпапки прямо из базовой папки проектов
+            var subDirs = Directory.GetDirectories(settings.ProjectBaseFolder);
             foreach (string dir in subDirs)
             {
                 string folderName = Path.GetFileName(dir);
@@ -157,7 +156,7 @@ public class ProjectCreationService
         }
         catch (Exception ex)
         {
-            LogService.Error($"Ошибка сканирования проектов за {dateFolderName}", ex);
+            LogService.Error($"Ошибка сканирования проектов за {date:dd.MM.yyyy}", ex);
         }
 
         return projects;
