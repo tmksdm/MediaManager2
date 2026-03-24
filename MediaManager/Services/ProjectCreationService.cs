@@ -119,6 +119,7 @@ public class ProjectCreationService
     /// <summary>
     /// Получить список проектов (имён подпапок) за указанную дату.
     /// Сканирует папку DD.MM.YYYY внутри базовой папки проектов.
+    /// Возвращает только папки с префиксом MM_DD_ (созданные через приложение).
     /// </summary>
     public List<string> GetTodayProjects(DateTime date, AppSettings settings)
     {
@@ -130,6 +131,12 @@ public class ProjectCreationService
         if (!Directory.Exists(dateFolderPath))
             return projects;
 
+        // Формируем ожидаемый префикс для текущей даты: "MM_DD_"
+        // Например, для 24 марта — "03_24_"
+        // Только папки с таким префиксом считаются проектами,
+        // созданными через приложение. Остальные (АНОНС_2022, Выпуск_Болванка и т.д.) — игнорируются.
+        string expectedPrefix = $"{date.Month:D2}_{date.Day:D2}_";
+
         try
         {
             // Получаем все подпапки в папке даты
@@ -137,7 +144,12 @@ public class ProjectCreationService
             foreach (string dir in subDirs)
             {
                 string folderName = Path.GetFileName(dir);
-                projects.Add(folderName);
+
+                // Берём только папки, начинающиеся с MM_DD_
+                if (folderName.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    projects.Add(folderName);
+                }
             }
 
             // Сортируем по алфавиту
