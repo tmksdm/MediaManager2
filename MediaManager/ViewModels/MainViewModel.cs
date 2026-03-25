@@ -11,7 +11,17 @@ using System.Windows.Threading; // для DispatcherTimer
 
 namespace MediaManager.ViewModels;
 
-public class MainViewModel : INotifyPropertyChanged
+/// <summary>
+/// Главная ViewModel приложения.
+/// Разбита на несколько файлов через partial class:
+///   MainViewModel.cs                — поля, свойства, конструктор, команды
+///   MainViewModel.FileWatchers.cs   — FileSystemWatcher (файлы + проекты)
+///   MainViewModel.Navigation.cs     — навигация по датам (◀ ▶)
+///   MainViewModel.Scanning.cs       — сканирование файлов и проверка статусов
+///   MainViewModel.CopyOperations.cs — копирование файлов и журнал
+///   MainViewModel.Projects.cs       — создание проектов и экспортные имена
+/// </summary>
+public partial class MainViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -38,7 +48,7 @@ public class MainViewModel : INotifyPropertyChanged
     private CancellationTokenSource? _copyCts;
 
     // ======================================================
-    // === FileSystemWatcher — автообновление списка файлов ===
+    // === FileSystemWatcher — поля (реализация в MainViewModel.FileWatchers.cs) ===
     // ======================================================
 
     /// <summary>Watcher для основной папки поиска</summary>
@@ -57,10 +67,6 @@ public class MainViewModel : INotifyPropertyChanged
 
     /// <summary>Задержка перед автообновлением (мс)</summary>
     private const int DebounceDelayMs = 500;
-
-    // ======================================================
-    // === FileSystemWatcher — автообновление списка проектов ===
-    // ======================================================
 
     /// <summary>
     /// Watcher для папки проектов (ProjectBaseFolder).
@@ -91,7 +97,9 @@ public class MainViewModel : INotifyPropertyChanged
     /// <summary>Флаг: идёт ли фоновая проверка статусов (защита от наложения)</summary>
     private bool _isRecheckingStatuses;
 
-    // --- Свойства ---
+    // ======================================================
+    // === Свойства ===
+    // ======================================================
 
     private DateTime _selectedDate = DateTime.Today;
     public DateTime SelectedDate
@@ -105,7 +113,7 @@ public class MainViewModel : INotifyPropertyChanged
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedDateText));
 
-                // === ИСПРАВЛЕНИЕ: при смене даты обновляем список проектов ===
+                // При смене даты обновляем список проектов.
                 // Сбрасываем выбранный проект и панель экспортных имён,
                 // потому что они относились к предыдущей дате.
                 SelectedProject = null;
@@ -243,32 +251,6 @@ public class MainViewModel : INotifyPropertyChanged
         set { if (_isLogExpanded != value) { _isLogExpanded = value; OnPropertyChanged(); } }
     }
 
-    /// <summary>
-    /// Добавляет запись в журнал копирований.
-    /// Вставляет в начало списка (самое свежее — сверху).
-    /// Удаляет старые записи если превышен лимит.
-    /// </summary>
-    private void AddLogEntry(string fileName, string destination, CopyLogStatus status)
-    {
-        var entry = new CopyLogEntry
-        {
-            Timestamp = DateTime.Now,
-            FileName = fileName,
-            Destination = destination,
-            Status = status
-        };
-
-        CopyLog.Insert(0, entry);
-
-        // Убираем старые записи, если превышен лимит
-        while (CopyLog.Count > MaxLogEntries)
-        {
-            CopyLog.RemoveAt(CopyLog.Count - 1);
-        }
-
-        OnPropertyChanged(nameof(HasLogEntries));
-    }
-
     // ======================================================
     // === Свойства для выпадающего списка проектов ===
     // ======================================================
@@ -321,7 +303,9 @@ public class MainViewModel : INotifyPropertyChanged
     /// <summary>Есть ли имена для показа</summary>
     public bool HasExportNames => ExportNames.Count > 0;
 
-    // --- Команды ---
+    // ======================================================
+    // === Команды ===
+    // ======================================================
 
     public RelayCommand NavigateBackCommand { get; }
     public RelayCommand NavigateForwardCommand { get; }
@@ -336,6 +320,10 @@ public class MainViewModel : INotifyPropertyChanged
     public RelayCommand ToggleLogCommand { get; }
     public RelayCommand ClearLogCommand { get; }
 
+    // ======================================================
+    // === Конструктор ===
+    // ======================================================
+
     public MainViewModel(SettingsViewModel settingsViewModel)
     {
         _settingsViewModel = settingsViewModel;
@@ -343,19 +331,19 @@ public class MainViewModel : INotifyPropertyChanged
         // Умная навигация: ищем ближайшую дату с файлами (async, не блокирует UI)
         NavigateBackCommand = new RelayCommand(
             _ => NavigateToNearestDateAsync(-1),
-            _ => !IsNavigating);  // Кнопка неактивна пока идёт поиск
+            _ => !IsNavigating);
         NavigateForwardCommand = new RelayCommand(
             _ => NavigateToNearestDateAsync(+1),
-            _ => !IsNavigating);  // Кнопка неактивна пока идёт поиск
+            _ => !IsNavigating);
 
         GoToTodayCommand = new RelayCommand(_ => SelectedDate = DateTime.Today);
         RefreshCommand = new RelayCommand(
             _ => ScanFilesAsync(),
-            _ => !IsScanning);  // Кнопка неактивна пока идёт сканирование
+            _ => !IsScanning);
         ToggleSettingsCommand = new RelayCommand(_ => IsSettingsVisible = !IsSettingsVisible);
         CreateProjectCommand = new RelayCommand(_ => ExecuteCreateProject());
 
-        // Новые команды для списка проектов
+        // Команды для списка проектов
         ToggleProjectListCommand = new RelayCommand(_ => ToggleProjectList());
         SelectProjectCommand = new RelayCommand(param => SelectProject(param as string));
         CopyExportNameCommand = new RelayCommand(param => CopyExportName(param as string));
@@ -394,393 +382,8 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     // ======================================================
-    // === Фоновая проверка статусов копирования ===
+    // === Освобождение ресурсов ===
     // ======================================================
-
-    /// <summary>
-    /// Тихо пересканирует статусы копирования файлов на экране.
-    /// Вызывается таймером каждые 30 секунд.
-    /// 
-    /// Зачем это нужно: после копирования кнопка становится «залитой».
-    /// Если кто-то удалит файл из конечной папки — кнопка останется залитой,
-    /// потому что приложение об этом не знает. Этот таймер тихо проверяет
-    /// все конечные пути и сбрасывает кнопки, если файлы пропали.
-    /// 
-    /// Не запускается, если:
-    /// - нет файлов на экране (нечего проверять)
-    /// - идёт полное сканирование (ScanFilesAsync уже проверит статусы)
-    /// - идёт копирование (не мешаем, статус обновится после копирования)
-    /// - предыдущая проверка ещё не завершилась
-    /// </summary>
-    private async Task RecheckCopyStatusesAsync()
-    {
-        // Защита от наложения: если предыдущий тик ещё работает — пропускаем
-        if (_isRecheckingStatuses)
-            return;
-
-        // Не проверяем, если нет файлов, идёт сканирование или копирование
-        if (FolderGroups.Count == 0 || IsScanning || IsCopying)
-            return;
-
-        _isRecheckingStatuses = true;
-
-        try
-        {
-            var settings = _settingsViewModel.GetSettings();
-
-            // Собираем все файлы и их направления для проверки (в UI-потоке)
-            var fileDestinations = new List<(MediaFile File, List<FileCopyService.CopyDestination> Destinations)>();
-            foreach (var group in FolderGroups)
-            {
-                foreach (var file in group.Files)
-                {
-                    var destinations = _copyService.GetDestinations(file, settings);
-                    fileDestinations.Add((file, destinations));
-                }
-            }
-
-            // Проверяем все статусы в фоновом потоке (File.Exists по сети — медленно)
-            var results = await Task.Run(() =>
-            {
-                var list = new List<(MediaFile File, string Label, bool Copied)>();
-                foreach (var (file, destinations) in fileDestinations)
-                {
-                    foreach (var dest in destinations)
-                    {
-                        bool copied = _copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath);
-                        list.Add((file, dest.Label, copied));
-                    }
-                }
-                return list;
-            });
-
-            // Обновляем флаги в UI-потоке (мы уже в UI-потоке после await)
-            foreach (var (file, label, copied) in results)
-            {
-                SetCopiedFlag(file, label, copied);
-            }
-        }
-        catch (Exception ex)
-        {
-            // Тихо логируем ошибку — не показываем пользователю,
-            // чтобы фоновая проверка не мешала работе
-            LogService.Error("Ошибка фоновой проверки статусов копирования", ex);
-        }
-        finally
-        {
-            _isRecheckingStatuses = false;
-        }
-    }
-
-    // ======================================================
-    // === FileSystemWatcher — автообновление списка файлов ===
-    // ======================================================
-
-    /// <summary>
-    /// Создаёт FileSystemWatcher для папок поиска из настроек.
-    /// Следит за появлением / удалением / переименованием .mp4 файлов.
-    /// При любом изменении — автоматически обновляет список с debounce.
-    /// </summary>
-    private void SetupFileWatchers()
-    {
-        // Сначала убиваем старые watchers (если были)
-        DisposeFileWatchers();
-
-        var settings = _settingsViewModel.GetSettings();
-
-        // Watcher для основной папки
-        _watcher1 = CreateFileWatcher(settings.SearchFolder);
-
-        // Watcher для дополнительной папки (если указана)
-        _watcher2 = CreateFileWatcher(settings.AdditionalSearchFolder);
-    }
-
-    /// <summary>
-    /// Создаёт и настраивает один FileSystemWatcher для указанной папки.
-    /// Возвращает null, если папка пустая или не существует.
-    /// </summary>
-    private FileSystemWatcher? CreateFileWatcher(string folderPath)
-    {
-        // Пропускаем пустые пути
-        if (string.IsNullOrWhiteSpace(folderPath))
-            return null;
-
-        // Пропускаем несуществующие папки (например, сетевой диск отключён)
-        if (!Directory.Exists(folderPath))
-            return null;
-
-        try
-        {
-            var watcher = new FileSystemWatcher(folderPath)
-            {
-                // Следим только за .mp4 файлами
-                Filter = "*.mp4",
-
-                // Следим за всеми подпапками
-                IncludeSubdirectories = true,
-
-                // Какие изменения отслеживать:
-                // FileName — создание, удаление, переименование файлов
-                // Size — изменение размера (файл дописывается после экспорта)
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size,
-
-                // Включаем мониторинг
-                EnableRaisingEvents = true
-            };
-
-            // Подписываемся на все нужные события
-            watcher.Created += OnFileChanged;    // Новый файл появился
-            watcher.Deleted += OnFileChanged;    // Файл удалён
-            watcher.Renamed += OnFileRenamed;    // Файл переименован
-            watcher.Changed += OnFileChanged;    // Файл изменился (размер вырос)
-
-            // Если watcher не успевает обработать события — ошибка
-            watcher.Error += OnWatcherError;
-
-            return watcher;
-        }
-        catch (Exception ex)
-        {
-            LogService.Error($"Не удалось создать FileSystemWatcher для {folderPath}", ex);
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Обработчик событий FileSystemWatcher (Created, Deleted, Changed).
-    /// ВАЖНО: этот метод вызывается из фонового потока!
-    /// Нельзя напрямую обращаться к UI — используем Dispatcher.
-    /// </summary>
-    private void OnFileChanged(object sender, FileSystemEventArgs e)
-    {
-        ScheduleDebouncedScan();
-    }
-
-    /// <summary>
-    /// Обработчик переименования файла.
-    /// </summary>
-    private void OnFileRenamed(object sender, RenamedEventArgs e)
-    {
-        ScheduleDebouncedScan();
-    }
-
-    /// <summary>
-    /// Обработчик ошибок FileSystemWatcher.
-    /// Бывает, если буфер переполнен (слишком много событий сразу).
-    /// Просто пересканируем — это надёжнее, чем пытаться восстановить.
-    /// </summary>
-    private void OnWatcherError(object sender, ErrorEventArgs e)
-    {
-        LogService.Error("Ошибка FileSystemWatcher", e.GetException());
-        ScheduleDebouncedScan();
-    }
-
-    /// <summary>
-    /// Запланировать сканирование через 500мс (debounce).
-    /// 
-    /// Зачем debounce? Когда Premiere экспортирует файл, система генерирует
-    /// несколько событий подряд: Created, Changed (размер 0), Changed (размер растёт),
-    /// Changed (финальный размер). Без debounce мы бы запустили 4 сканирования подряд.
-    /// С debounce — ждём 500мс тишины, и только потом сканируем один раз.
-    /// </summary>
-    private void ScheduleDebouncedScan()
-    {
-        // Отменяем предыдущий отложенный скан (если был)
-        _debounceCts?.Cancel();
-        _debounceCts?.Dispose();
-        _debounceCts = new CancellationTokenSource();
-
-        var token = _debounceCts.Token;
-
-        // Запускаем таймер в фоне
-        Task.Run(async () =>
-        {
-            try
-            {
-                // Ждём 500мс — если за это время придёт новое событие,
-                // этот таймер отменится и запустится новый
-                await Task.Delay(DebounceDelayMs, token);
-
-                // Время вышло, новых событий не было — запускаем сканирование.
-                // ScanFilesAsync() обращается к UI, поэтому вызываем через Dispatcher
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    ScanFilesAsync();
-                });
-            }
-            catch (TaskCanceledException)
-            {
-                // Нормально — таймер отменён новым событием, ничего не делаем
-            }
-        }, token);
-    }
-
-    // ======================================================
-    // === FileSystemWatcher — автообновление списка проектов ===
-    // ======================================================
-
-    /// <summary>
-    /// Создаёт FileSystemWatcher для папки проектов (ProjectBaseFolder).
-    /// Следит за созданием / удалением / переименованием ПАПОК (не файлов).
-    /// При срабатывании — обновляет выпадающий список проектов с debounce.
-    /// 
-    /// Не создаёт нагрузки: FileSystemWatcher работает на уровне ОС —
-    /// ядро Windows просто отправляет уведомление, когда папка появляется
-    /// или исчезает. Никакого периодического сканирования нет.
-    /// </summary>
-    private void SetupProjectWatcher()
-    {
-        // Убиваем старый watcher (если был)
-        DisposeProjectWatcher();
-
-        var settings = _settingsViewModel.GetSettings();
-
-        if (string.IsNullOrWhiteSpace(settings.ProjectBaseFolder))
-            return;
-
-        if (!Directory.Exists(settings.ProjectBaseFolder))
-            return;
-
-        try
-        {
-            _projectWatcher = new FileSystemWatcher(settings.ProjectBaseFolder)
-            {
-                // Следим за всеми элементами (папки не имеют расширений)
-                Filter = "*",
-
-                // Только верхний уровень — проекты лежат прямо в базовой папке
-                IncludeSubdirectories = false,
-
-                // Отслеживаем имена папок (создание, удаление, переименование)
-                NotifyFilter = NotifyFilters.DirectoryName,
-
-                // Включаем мониторинг
-                EnableRaisingEvents = true
-            };
-
-            // Подписываемся на события папок
-            _projectWatcher.Created += OnProjectFolderChanged;
-            _projectWatcher.Deleted += OnProjectFolderChanged;
-            _projectWatcher.Renamed += OnProjectFolderRenamed;
-            _projectWatcher.Error += OnProjectWatcherError;
-        }
-        catch (Exception ex)
-        {
-            LogService.Error($"Не удалось создать FileSystemWatcher для папки проектов: {settings.ProjectBaseFolder}", ex);
-        }
-    }
-
-    /// <summary>
-    /// Обработчик создания/удаления папки в ProjectBaseFolder.
-    /// Вызывается из фонового потока — нельзя обращаться к UI напрямую.
-    /// </summary>
-    private void OnProjectFolderChanged(object sender, FileSystemEventArgs e)
-    {
-        ScheduleDebouncedProjectRefresh();
-    }
-
-    /// <summary>
-    /// Обработчик переименования папки в ProjectBaseFolder.
-    /// </summary>
-    private void OnProjectFolderRenamed(object sender, RenamedEventArgs e)
-    {
-        ScheduleDebouncedProjectRefresh();
-    }
-
-    /// <summary>
-    /// Обработчик ошибок watcher-а проектов.
-    /// </summary>
-    private void OnProjectWatcherError(object sender, ErrorEventArgs e)
-    {
-        LogService.Error("Ошибка FileSystemWatcher (папка проектов)", e.GetException());
-        ScheduleDebouncedProjectRefresh();
-    }
-
-    /// <summary>
-    /// Запланировать обновление списка проектов через 500мс (debounce).
-    /// Аналогично ScheduleDebouncedScan(), но для проектов.
-    /// Использует отдельный CancellationTokenSource, чтобы не конфликтовать
-    /// с debounce файлового сканирования.
-    /// </summary>
-    private void ScheduleDebouncedProjectRefresh()
-    {
-        // Отменяем предыдущий отложенный refresh (если был)
-        _projectDebounceCts?.Cancel();
-        _projectDebounceCts?.Dispose();
-        _projectDebounceCts = new CancellationTokenSource();
-
-        var token = _projectDebounceCts.Token;
-
-        Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(DebounceDelayMs, token);
-
-                // Обновляем список проектов в UI-потоке
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    RefreshProjectsForSelectedDate();
-
-                    // Если выбранный проект был удалён — сбрасываем панель экспортных имён
-                    if (SelectedProject != null && !TodayProjects.Contains(SelectedProject))
-                    {
-                        SelectedProject = null;
-                    }
-                });
-            }
-            catch (TaskCanceledException)
-            {
-                // Нормально — отменён новым событием
-            }
-        }, token);
-    }
-
-    /// <summary>
-    /// Останавливает и освобождает watcher папки проектов.
-    /// </summary>
-    private void DisposeProjectWatcher()
-    {
-        if (_projectWatcher != null)
-        {
-            _projectWatcher.EnableRaisingEvents = false;
-            _projectWatcher.Dispose();
-            _projectWatcher = null;
-        }
-    }
-
-    // ======================================================
-
-    /// <summary>
-    /// Вызывается при изменении настроек (пользователь поменял папки поиска).
-    /// Пересоздаём watchers для новых папок.
-    /// </summary>
-    private void OnSettingsChanged()
-    {
-        SetupFileWatchers();
-        SetupProjectWatcher(); // Пересоздаём watcher проектов — путь мог измениться
-    }
-
-    /// <summary>
-    /// Останавливает и освобождает watchers файлов (.mp4).
-    /// Вызывается перед пересозданием и при закрытии приложения.
-    /// </summary>
-    private void DisposeFileWatchers()
-    {
-        if (_watcher1 != null)
-        {
-            _watcher1.EnableRaisingEvents = false;
-            _watcher1.Dispose();
-            _watcher1 = null;
-        }
-
-        if (_watcher2 != null)
-        {
-            _watcher2.EnableRaisingEvents = false;
-            _watcher2.Dispose();
-            _watcher2 = null;
-        }
-    }
 
     /// <summary>
     /// Освобождение ресурсов. Вызывается из MainWindow при закрытии.
@@ -797,494 +400,5 @@ public class MainViewModel : INotifyPropertyChanged
         _projectDebounceCts?.Cancel();
         _projectDebounceCts?.Dispose();
         _settingsViewModel.SettingsChanged -= OnSettingsChanged;
-    }
-
-    // --- Умная навигация по датам (асинхронная) ---
-
-    /// <summary>
-    /// Ищет ближайшую дату с файлами в фоновом потоке.
-    /// UI не блокируется — кнопки ◀ ▶ отключаются на время поиска,
-    /// в статусной строке показывается «Поиск ближайшей даты...»
-    /// </summary>
-    private async void NavigateToNearestDateAsync(int direction)
-    {
-        // Защита от повторного запуска
-        if (IsNavigating)
-            return;
-
-        IsNavigating = true;
-        string directionText = direction < 0 ? "назад" : "вперёд";
-        StatusMessage = $"Поиск ближайшей даты ({directionText})...";
-
-        var settings = _settingsViewModel.GetSettings();
-        DateTime startDate = SelectedDate;
-
-        try
-        {
-            // Тяжёлая работа — в фоновом потоке (Task.Run)
-            // Внутри только чтение файловой системы, никаких обращений к UI
-            DateTime? foundDate = await Task.Run(() =>
-            {
-                DateTime candidate = startDate;
-
-                for (int i = 0; i < MaxSearchDays; i++)
-                {
-                    candidate = candidate.AddDays(direction);
-
-                    bool hasFiles = _discoveryService.HasFilesForDate(
-                        settings.SearchFolder,
-                        settings.AdditionalSearchFolder,
-                        candidate);
-
-                    if (hasFiles)
-                        return candidate; // Нашли — возвращаем дату
-                }
-
-                return (DateTime?)null; // Не нашли за 365 дней
-            });
-
-            // Обратно в UI-потоке — обновляем свойства
-            if (foundDate.HasValue)
-            {
-                SelectedDate = foundDate.Value;
-            }
-            else
-            {
-                // Не нашли — просто сдвигаем на 1 день
-                SelectedDate = startDate.AddDays(direction);
-                StatusMessage = $"Файлы не найдены за {MaxSearchDays} дней";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Ошибка поиска даты: {ex.Message}";
-            LogService.Error("Ошибка навигации по датам", ex);
-        }
-        finally
-        {
-            IsNavigating = false;
-        }
-    }
-
-    // ======================================================
-    // === Создание проекта ===
-    // ======================================================
-
-    private void ExecuteCreateProject()
-    {
-        var settings = _settingsViewModel.GetSettings();
-
-        // Проект всегда создаётся за ВЫБРАННУЮ дату (а не за сегодня),
-        // чтобы пользователь мог создать проект на нужную дату,
-        // даже если перешёл на другую через навигацию.
-        var result = _projectService.CreateProject(ProjectName, SelectedDate, settings);
-
-        if (result.Success)
-        {
-            StatusMessage = $"✅ {result.Message}";
-            ProjectName = string.Empty;
-
-            // Обновляем список проектов — появится новый
-            RefreshProjectsForSelectedDate();
-
-            ScanFilesAsync();
-
-            // Автозапуск созданного .prproj файла в Premiere Pro
-            if (!string.IsNullOrEmpty(result.CreatedPrprojPath))
-            {
-                try
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = result.CreatedPrprojPath,
-                        UseShellExecute = true // Откроется в Premiere Pro через ассоциацию Windows
-                    });
-                }
-                catch (Exception ex)
-                {
-                    // Не блокируем работу, если Premiere не запустился —
-                    // проект всё равно создан успешно
-                    StatusMessage = $"✅ Проект создан, но не удалось открыть .prproj: {ex.Message}";
-                    LogService.Error("Ошибка автозапуска .prproj", ex);
-                }
-            }
-        }
-        else
-        {
-            StatusMessage = $"❌ {result.Message}";
-        }
-    }
-
-
-    // ======================================================
-    // === Выпадающий список проектов ===
-    // ======================================================
-
-    /// <summary>
-    /// Обновляет список проектов за выбранную дату (SelectedDate).
-    /// Вызывается при старте, после создания нового проекта и при смене даты.
-    /// </summary>
-    private void RefreshProjectsForSelectedDate()
-    {
-        var settings = _settingsViewModel.GetSettings();
-        var projects = _projectService.GetTodayProjects(SelectedDate, settings);
-        TodayProjects = new ObservableCollection<string>(projects);
-    }
-
-    /// <summary>
-    /// Открыть/закрыть выпадающий список проектов.
-    /// Перед открытием обновляем список (вдруг папки добавили вручную).
-    /// </summary>
-    private void ToggleProjectList()
-    {
-        if (!IsProjectListOpen)
-        {
-            RefreshProjectsForSelectedDate();
-        }
-        IsProjectListOpen = !IsProjectListOpen;
-    }
-
-    /// <summary>
-    /// Пользователь выбрал проект из списка — генерируем имена.
-    /// </summary>
-    private void SelectProject(string? projectName)
-    {
-        if (string.IsNullOrEmpty(projectName))
-            return;
-
-        SelectedProject = projectName;
-        IsProjectListOpen = false; // Закрываем выпадающий список
-    }
-
-    /// <summary>
-    /// Генерируем 4 имени для экспорта по выбранному проекту.
-    /// </summary>
-    private void UpdateExportNames()
-    {
-        if (string.IsNullOrEmpty(SelectedProject))
-        {
-            ExportNames = new ObservableCollection<ExportName>();
-            return;
-        }
-
-        var names = _projectService.GenerateExportNames(SelectedProject);
-        ExportNames = new ObservableCollection<ExportName>(names);
-    }
-
-    /// <summary>
-    /// Копировать имя в буфер обмена.
-    /// </summary>
-    private void CopyExportName(string? name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return;
-
-        try
-        {
-            Clipboard.SetText(name);
-            StatusMessage = $"📋 Скопировано: {name}";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"❌ Ошибка копирования в буфер: {ex.Message}";
-        }
-    }
-
-    // ======================================================
-    // === Отмена копирования ===
-    // ======================================================
-
-    /// <summary>
-    /// Отменяет текущее копирование.
-    /// CancellationTokenSource.Cancel() сигнализирует токену —
-    /// CopyFileAsync прервёт чтение/запись и удалит недокопированный файл.
-    /// </summary>
-    public void CancelCopy()
-    {
-        _copyCts?.Cancel();
-    }
-
-    // ======================================================
-    // === Копирование файлов ===
-    // ======================================================
-
-    public async Task ExecuteCopyAsync(MediaFile file, string destinationKey)
-    {
-        if (IsCopying)
-            return;
-
-        var settings = _settingsViewModel.GetSettings();
-        string? efirTime = null;
-
-        // Для Эфир-направления ПАНОРАМА/ДАЙДЖЕСТ — спрашиваем время
-        if (destinationKey == "Эфир" &&
-            (file.FileType == MediaFileType.Panorama || file.FileType == MediaFileType.Digest))
-        {
-            string[] timeOptions = file.FileType == MediaFileType.Digest
-                ? ["07", "12", "14", "16"]
-                : ["18", "20"];
-
-            var dialog = new EfirTimeDialog(timeOptions);
-            dialog.Owner = Application.Current.MainWindow;
-            if (dialog.ShowDialog() != true || dialog.SelectedTime == null)
-                return;
-
-            efirTime = dialog.SelectedTime;
-        }
-
-        // Получаем все направления для этого файла
-        var destinations = _copyService.GetDestinations(file, settings, efirTime);
-
-        // Находим нужное направление по ключу (Label)
-        var dest = destinations.FirstOrDefault(d => d.Label == destinationKey);
-        if (dest == null)
-        {
-            StatusMessage = $"Направление «{destinationKey}» не найдено";
-            return;
-        }
-
-        // Проверяем: уже скопировано?
-        if (_copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath))
-        {
-            if (dest.CopyPathToClipboard)
-            {
-                Clipboard.SetText(dest.DestinationPath);
-                StatusMessage = $"✅ Уже скопировано. Путь в буфере: {dest.DestinationPath}";
-            }
-            else
-            {
-                StatusMessage = $"✅ Файл уже скопирован: {Path.GetFileName(dest.DestinationPath)}";
-            }
-            return;
-        }
-
-        // Если файл существует но отличается — спрашиваем перезапись
-        if (File.Exists(dest.DestinationPath))
-        {
-            var result = MessageBox.Show(
-                $"Файл уже существует в папке назначения, но отличается.\n\n" +
-                $"Перезаписать?\n{dest.DestinationPath}",
-                "Подтверждение перезаписи",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
-            {
-                StatusMessage = "Копирование отменено";
-                return;
-            }
-        }
-
-        // Создаём токен отмены для этого копирования
-        _copyCts = new CancellationTokenSource();
-
-        // Копируем
-        IsCopying = true;
-        CopyProgress = 0;
-        StatusMessage = $"Копирование: {file.FileName} → {destinationKey}...";
-
-        var progress = new Progress<double>(percent =>
-        {
-            CopyProgress = percent;
-        });
-
-        bool success = await _copyService.CopyFileAsync(
-            file.FullPath, dest.DestinationPath, progress, _copyCts.Token);
-
-        bool wasCancelled = _copyCts.IsCancellationRequested;
-
-        // Освобождаем токен
-        _copyCts.Dispose();
-        _copyCts = null;
-
-        IsCopying = false;
-        CopyProgress = 0;
-
-        if (success)
-        {
-            // Обновляем флаг «скопировано» — кнопка станет залитой
-            SetCopiedFlag(file, destinationKey, true);
-
-            // Записываем в журнал
-            AddLogEntry(file.FileName, destinationKey, CopyLogStatus.Success);
-
-            if (dest.CopyPathToClipboard)
-            {
-                Clipboard.SetText(dest.DestinationPath);
-                StatusMessage = $"✅ Скопировано! Путь в буфере: {dest.DestinationPath}";
-            }
-            else
-            {
-                StatusMessage = $"✅ Скопировано: {file.FileName} → {destinationKey}";
-            }
-        }
-        else if (wasCancelled)
-        {
-            // Записываем в журнал
-            AddLogEntry(file.FileName, destinationKey, CopyLogStatus.Cancelled);
-
-            StatusMessage = $"⛔ Копирование отменено: {file.FileName}";
-        }
-        else
-        {
-            // Записываем в журнал
-            AddLogEntry(file.FileName, destinationKey, CopyLogStatus.Error);
-
-            StatusMessage = $"❌ Ошибка копирования: {file.FileName} → {destinationKey}";
-        }
-    }
-
-    // ======================================================
-    // === Сканирование (асинхронное) ===
-    // ======================================================
-
-    /// <summary>
-    /// Асинхронное сканирование файлов.
-    /// Тяжёлые операции (обход файловой системы + проверка статусов копирования
-    /// по сетевым путям) выполняются в фоновом потоке — UI не зависает.
-    /// </summary>
-    private async void ScanFilesAsync()
-    {
-        // Защита от повторного запуска
-        if (IsScanning)
-            return;
-
-        IsScanning = true;
-        StatusMessage = "Сканирование...";
-
-        AppSettings settings = _settingsViewModel.GetSettings();
-        // Запоминаем дату ДО await — если пользователь успеет переключить дату,
-        // результат старого сканирования не затрёт новый
-        DateTime scanDate = SelectedDate;
-
-        try
-        {
-            // === Фоновый поток: обнаружение файлов ===
-            List<FolderGroup> groups = await Task.Run(() =>
-                _discoveryService.DiscoverFiles(
-                    settings.SearchFolder,
-                    settings.AdditionalSearchFolder,
-                    scanDate));
-
-            // Если за время сканирования пользователь переключил дату —
-            // результат уже не актуален, выбрасываем
-            if (scanDate != SelectedDate)
-                return;
-
-            // === UI-поток: обновляем список (привязка к интерфейсу) ===
-            FolderGroups = new ObservableCollection<FolderGroup>(groups);
-
-            TotalFilesFound = 0;
-            foreach (var group in groups)
-                TotalFilesFound += group.Files.Count;
-
-            OnPropertyChanged(nameof(IsEmpty));
-
-            if (TotalFilesFound == 0)
-            {
-                StatusMessage = $"Файлы для {scanDate:dd.MM.yyyy} не найдены";
-            }
-            else
-            {
-                string filesWord = GetFilesWord(TotalFilesFound);
-                int groupCount = groups.Count;
-                string foldersWord = GetFoldersWord(groupCount);
-                StatusMessage = $"Найдено {TotalFilesFound} {filesWord} в {groupCount} {foldersWord}";
-
-                // === Фоновый поток: проверка статусов копирования ===
-                // Это самая медленная часть — обращения к сетевым дискам
-                // по каждому файлу × каждое направление.
-                // Собираем данные для фонового потока заранее.
-                var fileDestinations = new List<(MediaFile File, List<FileCopyService.CopyDestination> Destinations)>();
-                foreach (var group in groups)
-                {
-                    foreach (var file in group.Files)
-                    {
-                        var destinations = _copyService.GetDestinations(file, settings);
-                        fileDestinations.Add((file, destinations));
-                    }
-                }
-
-                // Проверяем все статусы в фоновом потоке
-                var copyResults = await Task.Run(() =>
-                {
-                    var results = new List<(MediaFile File, string Label, bool Copied)>();
-                    foreach (var (file, destinations) in fileDestinations)
-                    {
-                        foreach (var dest in destinations)
-                        {
-                            bool copied = _copyService.IsAlreadyCopied(file.FullPath, dest.DestinationPath);
-                            results.Add((file, dest.Label, copied));
-                        }
-                    }
-                    return results;
-                });
-
-                // Снова проверяем актуальность даты
-                if (scanDate != SelectedDate)
-                    return;
-
-                // === UI-поток: ставим флаги (обновляют привязки кнопок) ===
-                foreach (var (file, label, copied) in copyResults)
-                {
-                    SetCopiedFlag(file, label, copied);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Показываем ошибку только если дата не сменилась
-            if (scanDate == SelectedDate)
-            {
-                StatusMessage = $"Ошибка сканирования: {ex.Message}";
-                FolderGroups = new ObservableCollection<FolderGroup>();
-                TotalFilesFound = 0;
-                OnPropertyChanged(nameof(IsEmpty));
-                LogService.Error("Ошибка сканирования файлов", ex);
-            }
-        }
-        finally
-        {
-            IsScanning = false;
-        }
-    }
-
-    /// <summary>
-    /// Устанавливает нужный флаг IsCopiedToXxx по ключу направления.
-    /// </summary>
-    private static void SetCopiedFlag(MediaFile file, string destinationKey, bool value)
-    {
-        switch (destinationKey)
-        {
-            case "Site2 (архив)": file.IsCopiedToSite2 = value; break;
-            case "Эфир": file.IsCopiedToEfir = value; break;
-            case "Кодер Site": file.IsCopiedToCoder = value; break;
-            case "Хранилище": file.IsCopiedToStorage = value; break;
-            case "Эфир 25к": file.IsCopiedToEfir25 = value; break;
-            case "Кодер 25к": file.IsCopiedToCoder25 = value; break;
-            case "Сюжеты": file.IsCopiedToArchive = value; break;
-        }
-    }
-
-    // --- Вспомогательные ---
-
-    private static string GetFilesWord(int count)
-    {
-        int lastTwo = count % 100;
-        int lastOne = count % 10;
-        if (lastTwo >= 11 && lastTwo <= 19) return "файлов";
-        if (lastOne == 1) return "файл";
-        if (lastOne >= 2 && lastOne <= 4) return "файла";
-        return "файлов";
-    }
-
-    private static string GetFoldersWord(int count)
-    {
-        int lastTwo = count % 100;
-        int lastOne = count % 10;
-        if (lastTwo >= 11 && lastTwo <= 19) return "папках";
-        if (lastOne == 1) return "папке";
-        if (lastOne >= 2 && lastOne <= 4) return "папках";
-        return "папках";
     }
 }
