@@ -18,7 +18,7 @@ namespace MediaManager.ViewModels;
 ///   MainViewModel.FileWatchers.cs   — FileSystemWatcher (файлы + проекты)
 ///   MainViewModel.Navigation.cs     — навигация по датам (◀ ▶)
 ///   MainViewModel.Scanning.cs       — сканирование файлов и проверка статусов
-///   MainViewModel.CopyOperations.cs — копирование файлов и журнал
+///   MainViewModel.CopyOperations.cs — очередь копирования, обработка, журнал
 ///   MainViewModel.Projects.cs       — создание проектов и экспортные имена
 /// </summary>
 public partial class MainViewModel : INotifyPropertyChanged
@@ -252,6 +252,27 @@ public partial class MainViewModel : INotifyPropertyChanged
     }
 
     // ======================================================
+    // === Очередь копирования (видимая) ===
+    // ======================================================
+
+    /// <summary>
+    /// Очередь задач копирования, привязанная к UI.
+    /// ObservableCollection вместо Queue, потому что:
+    /// 1) нужно показывать список в XAML (привязка)
+    /// 2) нужно удалять элемент из середины (крестик на каждой задаче)
+    /// Первый элемент (индекс 0) — текущий копируемый, остальные — ожидающие.
+    /// </summary>
+    private ObservableCollection<CopyQueueItem> _copyQueue = new();
+    public ObservableCollection<CopyQueueItem> CopyQueue
+    {
+        get => _copyQueue;
+        set { _copyQueue = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Есть ли задачи в очереди (для показа/скрытия панели)</summary>
+    public bool HasQueueItems => CopyQueue.Count > 0;
+
+    // ======================================================
     // === Свойства для выпадающего списка проектов ===
     // ======================================================
 
@@ -320,6 +341,12 @@ public partial class MainViewModel : INotifyPropertyChanged
     public RelayCommand ToggleLogCommand { get; }
     public RelayCommand ClearLogCommand { get; }
 
+    /// <summary>Удалить конкретную задачу из очереди (крестик в панели очереди)</summary>
+    public RelayCommand RemoveFromQueueCommand { get; }
+
+    /// <summary>Очистить всю очередь (оставив текущее копирование)</summary>
+    public RelayCommand ClearQueueCommand { get; }
+
     // ======================================================
     // === Конструктор ===
     // ======================================================
@@ -348,8 +375,12 @@ public partial class MainViewModel : INotifyPropertyChanged
         SelectProjectCommand = new RelayCommand(param => SelectProject(param as string));
         CopyExportNameCommand = new RelayCommand(param => CopyExportName(param as string));
 
-        // Команда отмены копирования — активна только пока идёт копирование
+        // Команда отмены копирования — отменяет текущее + очищает очередь
         CancelCopyCommand = new RelayCommand(_ => CancelCopy(), _ => IsCopying);
+
+        // Команды очереди
+        RemoveFromQueueCommand = new RelayCommand(param => RemoveFromQueue(param));
+        ClearQueueCommand = new RelayCommand(_ => ClearQueue());
 
         // Команды журнала
         ToggleLogCommand = new RelayCommand(_ => IsLogExpanded = !IsLogExpanded);

@@ -493,7 +493,7 @@
                 <DockPanel>
                     <!-- Кнопка отмены — Click handler вместо Command (надёжнее в borderless-окне) -->
                     <Button DockPanel.Dock="Right"
-                            Content="✕ Отмена"
+                            Content="✕ Отменить всё"
                             Click="CancelCopyButton_Click"
                             FontSize="12" Cursor="Hand"
                             Padding="10,0" Height="22"
@@ -525,11 +525,107 @@
                                  Foreground="#1565C0"
                                  Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#616161"
-                               VerticalAlignment="Center"/>
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
             </Border>
 
-            <!-- === ЖУРНАЛ КОПИРОВАНИЙ (над статусной строкой, под списком файлов) === -->
+            <!-- === ПАНЕЛЬ ОЧЕРЕДИ КОПИРОВАНИЯ (над статус-баром) === -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="#FFF8E1"
+                    BorderBrush="#FFE082" BorderThickness="0,1,0,0"
+                    Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <!-- Заголовок очереди -->
+                    <DockPanel Background="#FFF8E1" Margin="0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,8,0">
+                            <!-- Кнопка «Очистить очередь» -->
+                            <Button Content="Очистить очередь"
+                                    Command="{Binding ClearQueueCommand}"
+                                    FontSize="11" Foreground="#F57F17"
+                                    Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand" Padding="8,4">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#FFECB3"/>
+                                                <Setter Property="Foreground" Value="#E65100"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#F57F17" VerticalAlignment="Center" Margin="16,6,0,6">
+                            <Run Text="⏳ Очередь копирования"/>
+                        </TextBlock>
+                    </DockPanel>
+
+                    <!-- Список задач в очереди -->
+                    <Border MaxHeight="140">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
+                            <ItemsControl ItemsSource="{Binding CopyQueue}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="16,3,16,3" BorderBrush="#FFECB3" BorderThickness="0,0,0,1">
+                                            <DockPanel>
+                                                <!-- Крестик удаления — справа -->
+                                                <Button DockPanel.Dock="Right"
+                                                        Content="✕"
+                                                        Command="{Binding DataContext.RemoveFromQueueCommand,
+                                                                 ElementName=mainWindow}"
+                                                        CommandParameter="{Binding Id}"
+                                                        FontSize="10" Foreground="#BDBDBD"
+                                                        Background="Transparent" BorderThickness="0"
+                                                        Cursor="Hand" Width="20" Height="20"
+                                                        ToolTip="Убрать из очереди"
+                                                        Margin="8,0,0,0">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    CornerRadius="10">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                  VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FFECB3"/>
+                                                                    <Setter Property="Foreground" Value="#E65100"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                                <!-- Направление — справа от имени -->
+                                                <Border DockPanel.Dock="Right"
+                                                        Background="#FFE082" CornerRadius="3"
+                                                        Padding="6,1" Margin="8,0,0,0">
+                                                    <TextBlock Text="{Binding DestinationKey}"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               Foreground="#F57F17"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                                <!-- Имя файла -->
+                                                <TextBlock Text="{Binding File.FileName}"
+                                                           FontSize="11" Foreground="#5D4037"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- === ЖУРНАЛ КОПИРОВАНИЙ (над очередью, под списком файлов) === -->
             <Border DockPanel.Dock="Bottom"
                     Background="White"
                     BorderBrush="#E0E0E0" BorderThickness="0,1,0,0"
@@ -788,7 +884,6 @@
                                                                     </Button>
                                                                 </StackPanel>
 
-                                                                <!-- ДАЙДЖЕСТ -->
                                                                 <!-- ДАЙДЖЕСТ -->
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <StackPanel.Style>
