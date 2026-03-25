@@ -1,0 +1,105 @@
+﻿<UserControl x:Class="MediaManager.Views.CopyLogPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Журнал копирований.
+         DataContext наследуется от родительского окна (MainViewModel).
+         Все команды берутся из DataContext напрямую. -->
+
+    <Border Background="White"
+            BorderBrush="#E0E0E0" BorderThickness="0,1,0,0"
+            Visibility="{Binding HasLogEntries, Converter={StaticResource BoolToVis}}">
+        <StackPanel>
+            <DockPanel Background="#FAFAFA" Margin="0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,8,0">
+                    <Button Content="Очистить"
+                            Command="{Binding ClearLogCommand}"
+                            Style="{StaticResource PanelTextButtonStyle}"
+                            Margin="0,0,4,0"/>
+                    <Button Command="{Binding ToggleLogCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PanelTextButtonStyle}">
+                                <Setter Property="Content" Value="▲ Свернуть"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLogExpanded}" Value="False">
+                                        <Setter Property="Content" Value="▼ Развернуть"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="📋 История копирований" FontSize="12" FontWeight="SemiBold"
+                           Foreground="#616161" VerticalAlignment="Center" Margin="16,6,0,6"/>
+            </DockPanel>
+
+            <Border MaxHeight="160"
+                    Visibility="{Binding IsLogExpanded, Converter={StaticResource BoolToVis}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
+                    <ItemsControl ItemsSource="{Binding CopyLog}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="16,4,16,4" BorderBrush="#F0F0F0" BorderThickness="0,0,0,1">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left"
+                                                   Text="{Binding TimeText}"
+                                                   FontSize="11" FontFamily="Consolas"
+                                                   Foreground="#9E9E9E" VerticalAlignment="Center"
+                                                   Width="60"/>
+                                        <TextBlock DockPanel.Dock="Left"
+                                                   Text="{Binding StatusIcon}"
+                                                   FontSize="12" VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" Width="18"/>
+                                        <Border DockPanel.Dock="Right"
+                                                CornerRadius="3" Padding="6,1" Margin="8,0,0,0">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#E0E0E0"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Success">
+                                                            <Setter Property="Background" Value="#E8F5E9"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                            <Setter Property="Background" Value="#FFEBEE"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                            <Setter Property="Background" Value="#FFF3E0"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Destination}"
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#757575"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Success">
+                                                                <Setter Property="Foreground" Value="#2E7D32"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                                <Setter Property="Foreground" Value="#C62828"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                                <Setter Property="Foreground" Value="#E65100"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                        <TextBlock Text="{Binding FileName}"
+                                                   FontSize="11" Foreground="#424242"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </StackPanel>
+    </Border>
+</UserControl>
