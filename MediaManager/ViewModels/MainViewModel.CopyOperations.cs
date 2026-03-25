@@ -14,7 +14,7 @@ namespace MediaManager.ViewModels;
 /// 2. Если ProcessQueueAsync() ещё не запущен — запускается.
 /// 3. ProcessQueueAsync() берёт задачи из начала коллекции одну за другой и копирует.
 /// 4. Панель очереди (XAML) показывает все ожидающие задачи с крестиком ✕ для удаления.
-/// 5. В статусной строке: «[3/7] Копирование: файл → направление».
+/// 5. В статусной строке: «Копирование: 245 МБ/с, осталось ~12 сек».
 /// 6. Кнопка «Отмена» в статусной строке — отменяет текущий файл и очищает всю очередь.
 /// 
 /// CopyQueue — это ObservableCollection (а не Queue), потому что:
@@ -239,15 +239,34 @@ public partial class MainViewModel
                 _copyCts = new CancellationTokenSource();
 
                 CopyProgress = 0;
+                CopySpeedText = string.Empty;
 
                 string queueInfo = totalTasks > 1
                     ? $"[{_processedCount}/{totalTasks}] "
                     : "";
                 StatusMessage = $"Копирование {queueInfo}{item.File.FileName} → {item.DestinationKey}...";
 
-                var progress = new Progress<double>(percent =>
+                // Прогресс теперь передаёт CopyProgressInfo (процент + скорость + время)
+                var progress = new Progress<CopyProgressInfo>(info =>
                 {
-                    CopyProgress = percent;
+                    CopyProgress = info.Percent;
+
+                    // Формируем текст скорости и оставшегося времени
+                    string speed = info.SpeedText;
+                    string remaining = info.RemainingText;
+
+                    if (!string.IsNullOrEmpty(speed) && !string.IsNullOrEmpty(remaining))
+                    {
+                        CopySpeedText = $"{speed}, осталось {remaining}";
+                    }
+                    else if (!string.IsNullOrEmpty(speed))
+                    {
+                        CopySpeedText = speed;
+                    }
+                    else
+                    {
+                        CopySpeedText = string.Empty;
+                    }
                 });
 
                 bool success = await _copyService.CopyFileAsync(
@@ -258,6 +277,9 @@ public partial class MainViewModel
                 // Освобождаем токен
                 _copyCts.Dispose();
                 _copyCts = null;
+
+                // Сбрасываем текст скорости после завершения копирования файла
+                CopySpeedText = string.Empty;
 
                 // Удаляем обработанную задачу из очереди
                 // (она может уже быть удалена через CancelCopy → CopyQueue.Clear)
@@ -307,6 +329,7 @@ public partial class MainViewModel
         {
             IsCopying = false;
             CopyProgress = 0;
+            CopySpeedText = string.Empty;
             _isProcessingQueue = false;
         }
 

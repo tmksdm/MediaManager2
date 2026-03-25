@@ -152,14 +152,15 @@ public class FileCopyService
     }
 
     /// <summary>
-    /// Копирует файл с отчётом о прогрессе. Создаёт папки назначения если их нет.
+    /// Копирует файл с отчётом о прогрессе, скорости и оставшемся времени.
+    /// Создаёт папки назначения если их нет.
     /// Прогресс сообщается не чаще 20 раз в секунду, чтобы не забивать UI-поток
     /// и не блокировать обработку кликов (например, кнопки «Отмена»).
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
         string destPath,
-        IProgress<double>? progress = null,
+        IProgress<CopyProgressInfo>? progress = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -182,6 +183,9 @@ public class FileCopyService
             // и клики по кнопке «Отмена» не успевают обработаться.
             var lastReport = DateTime.UtcNow;
             const int reportIntervalMs = 50;
+
+            // Момент начала копирования — для расчёта средней скорости
+            var copyStart = DateTime.UtcNow;
 
             // Копируем содержимое файла
             using (var sourceStream = new FileStream(
@@ -206,7 +210,23 @@ public class FileCopyService
                         var now = DateTime.UtcNow;
                         if ((now - lastReport).TotalMilliseconds >= reportIntervalMs)
                         {
-                            progress.Report((double)copiedBytes / totalBytes * 100.0);
+                            double elapsedSeconds = (now - copyStart).TotalSeconds;
+                            double bytesPerSec = elapsedSeconds > 0.1
+                                ? copiedBytes / elapsedSeconds
+                                : 0;
+
+                            long remainingBytes = totalBytes - copiedBytes;
+                            TimeSpan? remaining = bytesPerSec > 0
+                                ? TimeSpan.FromSeconds(remainingBytes / bytesPerSec)
+                                : null;
+
+                            progress.Report(new CopyProgressInfo
+                            {
+                                Percent = (double)copiedBytes / totalBytes * 100.0,
+                                BytesPerSecond = bytesPerSec,
+                                Remaining = remaining
+                            });
+
                             lastReport = now;
                         }
                     }
@@ -218,7 +238,12 @@ public class FileCopyService
             File.SetLastWriteTime(destPath, sourceInfo.LastWriteTime);
             File.SetCreationTime(destPath, sourceInfo.CreationTime);
 
-            progress?.Report(100.0);
+            progress?.Report(new CopyProgressInfo
+            {
+                Percent = 100.0,
+                BytesPerSecond = 0,
+                Remaining = TimeSpan.Zero
+            });
             return true;
         }
         catch (OperationCanceledException)

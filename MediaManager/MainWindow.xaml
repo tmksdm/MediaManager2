@@ -230,6 +230,14 @@
                             Style="{StaticResource CancelAllButtonStyle}"
                             Margin="6,0,0,0"
                             Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- Скорость и оставшееся время -->
+                    <TextBlock DockPanel.Dock="Right"
+                               Text="{Binding CopySpeedText}"
+                               FontSize="12" Foreground="#424242" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="10,0,0,0"
+                               Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
+
                     <ProgressBar DockPanel.Dock="Right"
                                  Width="200" Height="16"
                                  Minimum="0" Maximum="100"

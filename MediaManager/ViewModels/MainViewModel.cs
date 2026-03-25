@@ -192,6 +192,17 @@ public partial class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Текст скорости и оставшегося времени: «245 МБ/с, осталось ~12 сек»
+    /// Показывается рядом с прогресс-баром во время копирования.
+    /// </summary>
+    private string _copySpeedText = string.Empty;
+    public string CopySpeedText
+    {
+        get => _copySpeedText;
+        set { if (_copySpeedText != value) { _copySpeedText = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>
     /// Идёт ли поиск ближайшей даты (для блокировки кнопок ◀ ▶).
     /// Пока true — кнопки навигации недоступны, в статусе «Поиск...»
     /// </summary>
