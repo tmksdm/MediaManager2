@@ -11,246 +11,11 @@
         Background="Transparent">
 
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-
-        <!-- Стиль кнопок навигации -->
-        <Style x:Key="NavButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="40"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Background" Value="#E0E0E0"/>
-            <Setter Property="BorderBrush" Value="#BDBDBD"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#BDBDBD"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#9E9E9E"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Стиль цветных кнопок -->
-        <Style x:Key="ActionButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="Padding" Value="16,0"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" Value="0.85"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Opacity" Value="0.7"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Стиль кнопок копирования: НЕ скопировано (пустая с рамкой) -->
-        <Style x:Key="CopyButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="3"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" Value="0.75"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Opacity" Value="0.6"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Стиль кнопок копирования: скопировано (залитая) -->
-        <Style x:Key="CopyButtonCopiedStyle" TargetType="Button">
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                CornerRadius="3"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" Value="0.85"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Opacity" Value="0.7"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-
-        <!-- Стиль кнопок title bar -->
-        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="46"/>
-            <Setter Property="Height" Value="36"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-            Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1976D2"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#1565C0"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Кнопка закрытия -->
-        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource TitleBarButtonStyle}">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#C62828"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#C62828"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Стиль элементов в списке проектов (Popup) -->
-        <Style x:Key="ProjectListItemStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E3F2FD"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#BBDEFB"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Стиль кликабельных имён для экспорта -->
-        <Style x:Key="ExportNameButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E8F5E9"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#C8E6C9"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles/ButtonStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Border BorderBrush="#0D47A1" BorderThickness="1" Background="#F5F5F5">
@@ -321,7 +86,6 @@
                                     BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="4"
                                     Height="32" Margin="0,0,10,0">
                                 <DockPanel>
-                                    <!-- Кнопка ▼ справа (показываем, только если есть проекты) -->
                                     <Button x:Name="projectDropdownButton"
                                             DockPanel.Dock="Right"
                                             Content="▼" FontSize="10"
@@ -348,7 +112,6 @@
                                         </Button.Template>
                                     </Button>
 
-                                    <!-- Поле ввода имени -->
                                     <TextBox x:Name="projectNameTextBox"
                                              Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
                                              FontSize="14" VerticalContentAlignment="Center"
@@ -395,32 +158,15 @@
                         </StackPanel>
                     </DockPanel>
 
-
                     <!-- Панель имён для экспорта (появляется после выбора проекта) -->
                     <Border Margin="16,6,16,10"
                             Background="#F5F5F5" CornerRadius="6" Padding="12,8"
                             Visibility="{Binding HasExportNames, Converter={StaticResource BoolToVis}}">
                         <DockPanel>
-                            <!-- Заголовок с именем проекта и кнопкой закрытия -->
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
                                 <Button DockPanel.Dock="Right" Content="✕"
-                                        FontSize="11" Foreground="#9E9E9E"
-                                        Background="Transparent" BorderThickness="0"
-                                        Cursor="Hand" Width="20" Height="20"
-                                        Click="CloseExportPanel_Click">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="10">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#E0E0E0"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
+                                        Style="{StaticResource SmallCloseButtonStyle}"
+                                        Click="CloseExportPanel_Click"/>
                                 <TextBlock FontSize="12" Foreground="#757575" VerticalAlignment="Center">
                                     <Run Text="Имена для экспорта"/>
                                     <Run Text="—" Foreground="#BDBDBD"/>
@@ -429,7 +175,6 @@
                                 </TextBlock>
                             </DockPanel>
 
-                            <!-- Список имён — горизонтально -->
                             <ItemsControl ItemsSource="{Binding ExportNames}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -445,9 +190,7 @@
                                                 Margin="0,0,16,4"
                                                 ToolTip="Нажмите, чтобы скопировать в буфер обмена">
                                             <StackPanel Orientation="Horizontal">
-                                                <!-- Цветной бейдж типа -->
-                                                <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
-        MinWidth="70">
+                                                <Border CornerRadius="3" Padding="6,2" Margin="0,0,6,0" MinWidth="70">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
                                                             <Setter Property="Background" Value="#9E9E9E"/>
@@ -471,7 +214,6 @@
                                                                FontSize="10" FontWeight="Bold"
                                                                HorizontalAlignment="Center"/>
                                                 </Border>
-                                                <!-- Имя файла -->
                                                 <TextBlock Text="{Binding Name}" FontSize="12"
                                                            Foreground="#212121" VerticalAlignment="Center"
                                                            FontFamily="Consolas"/>
@@ -486,37 +228,16 @@
                 </StackPanel>
             </Border>
 
-
             <!-- === STATUS BAR + PROGRESS (внизу) === -->
             <Border DockPanel.Dock="Bottom" Background="#E0E0E0" Padding="16,6"
                     BorderBrush="#BDBDBD" BorderThickness="0,1,0,0">
                 <DockPanel>
-                    <!-- Кнопка отмены — Click handler вместо Command (надёжнее в borderless-окне) -->
                     <Button DockPanel.Dock="Right"
                             Content="✕ Отменить всё"
                             Click="CancelCopyButton_Click"
-                            FontSize="12" Cursor="Hand"
-                            Padding="10,0" Height="22"
+                            Style="{StaticResource CancelAllButtonStyle}"
                             Margin="6,0,0,0"
-                            Foreground="White" Background="#C62828" BorderThickness="0"
-                            Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        CornerRadius="3" Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#C62828"/>
-                                    </Trigger>
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter Property="Background" Value="#B71C1C"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
+                            Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
                     <ProgressBar DockPanel.Dock="Right"
                                  Width="200" Height="16"
                                  Minimum="0" Maximum="100"
@@ -529,36 +250,17 @@
                 </DockPanel>
             </Border>
 
-            <!-- === ПАНЕЛЬ ОЧЕРЕДИ КОПИРОВАНИЯ (над статус-баром) === -->
+            <!-- === ПАНЕЛЬ ОЧЕРЕДИ КОПИРОВАНИЯ === -->
             <Border DockPanel.Dock="Bottom"
                     Background="#FFF8E1"
                     BorderBrush="#FFE082" BorderThickness="0,1,0,0"
                     Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
-                    <!-- Заголовок очереди -->
                     <DockPanel Background="#FFF8E1" Margin="0">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,8,0">
-                            <!-- Кнопка «Очистить очередь» -->
                             <Button Content="Очистить очередь"
                                     Command="{Binding ClearQueueCommand}"
-                                    FontSize="11" Foreground="#F57F17"
-                                    Background="Transparent" BorderThickness="0"
-                                    Cursor="Hand" Padding="8,4">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}"
-                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#FFECB3"/>
-                                                <Setter Property="Foreground" Value="#E65100"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
+                                    Style="{StaticResource QueueClearButtonStyle}"/>
                         </StackPanel>
                         <TextBlock FontSize="12" FontWeight="SemiBold"
                                    Foreground="#F57F17" VerticalAlignment="Center" Margin="16,6,0,6">
@@ -566,7 +268,6 @@
                         </TextBlock>
                     </DockPanel>
 
-                    <!-- Список задач в очереди -->
                     <Border MaxHeight="140">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
                             <ItemsControl ItemsSource="{Binding CopyQueue}">
@@ -574,34 +275,14 @@
                                     <DataTemplate>
                                         <Border Padding="16,3,16,3" BorderBrush="#FFECB3" BorderThickness="0,0,0,1">
                                             <DockPanel>
-                                                <!-- Крестик удаления — справа -->
                                                 <Button DockPanel.Dock="Right"
                                                         Content="✕"
                                                         Command="{Binding DataContext.RemoveFromQueueCommand,
                                                                  ElementName=mainWindow}"
                                                         CommandParameter="{Binding Id}"
-                                                        FontSize="10" Foreground="#BDBDBD"
-                                                        Background="Transparent" BorderThickness="0"
-                                                        Cursor="Hand" Width="20" Height="20"
+                                                        Style="{StaticResource QueueRemoveButtonStyle}"
                                                         ToolTip="Убрать из очереди"
-                                                        Margin="8,0,0,0">
-                                                    <Button.Template>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border Background="{TemplateBinding Background}"
-                                                                    CornerRadius="10">
-                                                                <ContentPresenter HorizontalAlignment="Center"
-                                                                                  VerticalAlignment="Center"/>
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter Property="Background" Value="#FFECB3"/>
-                                                                    <Setter Property="Foreground" Value="#E65100"/>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Button.Template>
-                                                </Button>
-                                                <!-- Направление — справа от имени -->
+                                                        Margin="8,0,0,0"/>
                                                 <Border DockPanel.Dock="Right"
                                                         Background="#FFE082" CornerRadius="3"
                                                         Padding="6,1" Margin="8,0,0,0">
@@ -610,7 +291,6 @@
                                                                Foreground="#F57F17"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
-                                                <!-- Имя файла -->
                                                 <TextBlock Text="{Binding File.FileName}"
                                                            FontSize="11" Foreground="#5D4037"
                                                            VerticalAlignment="Center"
@@ -625,43 +305,21 @@
                 </StackPanel>
             </Border>
 
-            <!-- === ЖУРНАЛ КОПИРОВАНИЙ (над очередью, под списком файлов) === -->
+            <!-- === ЖУРНАЛ КОПИРОВАНИЙ === -->
             <Border DockPanel.Dock="Bottom"
                     Background="White"
                     BorderBrush="#E0E0E0" BorderThickness="0,1,0,0"
                     Visibility="{Binding HasLogEntries, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
-                    <!-- Заголовок журнала (всегда видно если есть записи) -->
                     <DockPanel Background="#FAFAFA" Margin="0">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,8,0">
-                            <!-- Кнопка «Очистить» -->
                             <Button Content="Очистить"
                                     Command="{Binding ClearLogCommand}"
-                                    FontSize="11" Foreground="#9E9E9E"
-                                    Background="Transparent" BorderThickness="0"
-                                    Cursor="Hand" Padding="8,4" Margin="0,0,4,0">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}"
-                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#F0F0F0"/>
-                                                <Setter Property="Foreground" Value="#616161"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                            <!-- Кнопка свернуть/развернуть -->
-                            <Button Command="{Binding ToggleLogCommand}"
-                                    FontSize="11" Foreground="#9E9E9E"
-                                    Background="Transparent" BorderThickness="0"
-                                    Cursor="Hand" Padding="8,4">
+                                    Style="{StaticResource PanelTextButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Command="{Binding ToggleLogCommand}">
                                 <Button.Style>
-                                    <Style TargetType="Button">
+                                    <Style TargetType="Button" BasedOn="{StaticResource PanelTextButtonStyle}">
                                         <Setter Property="Content" Value="▲ Свернуть"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsLogExpanded}" Value="False">
@@ -670,27 +328,12 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Button.Style>
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}"
-                                                CornerRadius="3" Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#F0F0F0"/>
-                                                <Setter Property="Foreground" Value="#616161"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
                             </Button>
                         </StackPanel>
                         <TextBlock Text="📋 История копирований" FontSize="12" FontWeight="SemiBold"
                                    Foreground="#616161" VerticalAlignment="Center" Margin="16,6,0,6"/>
                     </DockPanel>
 
-                    <!-- Список записей (скрывается при сворачивании) -->
                     <Border MaxHeight="160"
                             Visibility="{Binding IsLogExpanded, Converter={StaticResource BoolToVis}}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0">
@@ -699,18 +342,15 @@
                                     <DataTemplate>
                                         <Border Padding="16,4,16,4" BorderBrush="#F0F0F0" BorderThickness="0,0,0,1">
                                             <DockPanel>
-                                                <!-- Время -->
                                                 <TextBlock DockPanel.Dock="Left"
                                                            Text="{Binding TimeText}"
                                                            FontSize="11" FontFamily="Consolas"
                                                            Foreground="#9E9E9E" VerticalAlignment="Center"
                                                            Width="60"/>
-                                                <!-- Иконка статуса -->
                                                 <TextBlock DockPanel.Dock="Left"
                                                            Text="{Binding StatusIcon}"
                                                            FontSize="12" VerticalAlignment="Center"
                                                            Margin="0,0,8,0" Width="18"/>
-                                                <!-- Направление справа -->
                                                 <Border DockPanel.Dock="Right"
                                                         CornerRadius="3" Padding="6,1" Margin="8,0,0,0">
                                                     <Border.Style>
@@ -750,7 +390,6 @@
                                                         </TextBlock.Style>
                                                     </TextBlock>
                                                 </Border>
-                                                <!-- Имя файла -->
                                                 <TextBlock Text="{Binding FileName}"
                                                            FontSize="11" Foreground="#424242"
                                                            VerticalAlignment="Center"
@@ -796,25 +435,21 @@
                             <DataTemplate>
                                 <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                                     <StackPanel>
-                                        <!-- Заголовок папки -->
                                         <Border Background="White" CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
                                             <TextBlock Text="{Binding FolderName}" FontSize="14"
                                                        FontWeight="SemiBold" Foreground="#424242"/>
                                         </Border>
 
-                                        <!-- Файлы (AlternationCount=2 для «зебры») -->
                                         <ItemsControl ItemsSource="{Binding Files}" AlternationCount="2">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border BorderBrush="#F0F0F0" BorderThickness="0,0,0,1" Padding="8,6">
-                                                        <!-- Фон «зебры» -->
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="Transparent"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter},
-                                                           Path=(ItemsControl.AlternationIndex)}"
-                                         Value="1">
+                                                                                 Path=(ItemsControl.AlternationIndex)}" Value="1">
                                                                         <Setter Property="Background" Value="#F7F5FA"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
@@ -823,7 +458,8 @@
 
                                                         <DockPanel>
                                                             <!-- Кнопки копирования — справа -->
-                                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                                                        VerticalAlignment="Center" Margin="12,0,0,0">
 
                                                                 <!-- ПАНОРАМА -->
                                                                 <StackPanel Orientation="Horizontal">
@@ -1056,15 +692,15 @@
                                                                         </Style>
                                                                     </Border.Style>
                                                                     <TextBlock Text="{Binding TypeLabel}" Foreground="White"
-               FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                                                               FontSize="11" FontWeight="Bold"
+                                                                               HorizontalAlignment="Center"/>
                                                                 </Border>
-                                                                <!-- Имя файла — кликабельная ссылка -->
                                                                 <TextBlock Text="{Binding DisplayName}" FontSize="13"
-           Foreground="#1565C0" VerticalAlignment="Center"
-           TextTrimming="CharacterEllipsis"
-           Cursor="Hand"
-           MouseLeftButtonDown="FileRow_MouseLeftButtonDown"
-           MouseRightButtonDown="FileRow_MouseRightButtonDown">
+                                                                           Foreground="#1565C0" VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Cursor="Hand"
+                                                                           MouseLeftButtonDown="FileRow_MouseLeftButtonDown"
+                                                                           MouseRightButtonDown="FileRow_MouseRightButtonDown">
                                                                     <TextBlock.Style>
                                                                         <Style TargetType="TextBlock">
                                                                             <Style.Triggers>
