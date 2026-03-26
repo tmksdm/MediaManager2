@@ -19,14 +19,29 @@ public partial class App : Application
         {
             LogService.Error("Необработанное исключение (UI)", args.Exception);
 
-            MessageBox.Show(
-                $"Произошла ошибка:\n\n{args.Exception.Message}\n\nПодробности записаны в log.txt",
+            // Предлагаем пользователю выбор: закрыть или продолжить.
+            // В ньюсруме важнее не потерять работу, но после ошибки
+            // внутреннее состояние может быть нарушено — рекомендуем перезапуск.
+            var result = MessageBox.Show(
+                $"Произошла ошибка:\n\n{args.Exception.Message}\n\n" +
+                "Подробности записаны в log.txt.\n\n" +
+                "Рекомендуется перезапустить программу.\n" +
+                "Закрыть программу?",
                 "Ошибка",
-                MessageBoxButton.OK,
+                MessageBoxButton.YesNo,
                 MessageBoxImage.Error);
 
-            // Помечаем как обработанное — программа НЕ закроется, а продолжит работу
-            args.Handled = true;
+            if (result == MessageBoxResult.Yes)
+            {
+                // Пользователь выбрал закрыть — не помечаем как обработанное,
+                // приложение завершится
+                args.Handled = false;
+            }
+            else
+            {
+                // Пользователь решил продолжить на свой риск
+                args.Handled = true;
+            }
         };
 
         // Перехват необработанных исключений в фоновых потоках

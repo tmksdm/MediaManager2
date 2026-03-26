@@ -119,7 +119,7 @@ public partial class MainViewModel
         string? efirTime = null;
 
         // Для Эфир-направления ПАНОРАМА/ДАЙДЖЕСТ — спрашиваем время
-        if (destinationKey == "Эфир" &&
+        if (destinationKey == DestinationKeys.Efir &&
             (file.FileType == MediaFileType.Panorama || file.FileType == MediaFileType.Digest))
         {
             string[] timeOptions = file.FileType == MediaFileType.Digest
@@ -150,8 +150,15 @@ public partial class MainViewModel
         {
             if (dest.CopyPathToClipboard)
             {
-                Clipboard.SetText(dest.DestinationPath);
-                StatusMessage = $"✅ Уже скопировано. Путь в буфере: {dest.DestinationPath}";
+                try
+                {
+                    Clipboard.SetText(dest.DestinationPath);
+                    StatusMessage = $"✅ Уже скопировано. Путь в буфере: {dest.DestinationPath}";
+                }
+                catch
+                {
+                    StatusMessage = $"✅ Уже скопировано, но не удалось записать путь в буфер";
+                }
             }
             else
             {
@@ -299,8 +306,15 @@ public partial class MainViewModel
 
                     if (item.CopyPathToClipboard)
                     {
-                        Clipboard.SetText(item.DestinationPath);
-                        StatusMessage = $"✅ Скопировано! Путь в буфере: {item.DestinationPath}";
+                        try
+                        {
+                            Clipboard.SetText(item.DestinationPath);
+                            StatusMessage = $"✅ Скопировано! Путь в буфере: {item.DestinationPath}";
+                        }
+                        catch
+                        {
+                            StatusMessage = $"✅ Скопировано, но не удалось записать путь в буфер";
+                        }
                     }
                     else
                     {

@@ -209,18 +209,19 @@ public partial class MainViewModel
 
     /// <summary>
     /// Устанавливает нужный флаг IsCopiedToXxx по ключу направления.
+    /// Ключи берутся из DestinationKeys — единый источник правды.
     /// </summary>
     private static void SetCopiedFlag(MediaFile file, string destinationKey, bool value)
     {
         switch (destinationKey)
         {
-            case "Site2 (архив)": file.IsCopiedToSite2 = value; break;
-            case "Эфир": file.IsCopiedToEfir = value; break;
-            case "Кодер Site": file.IsCopiedToCoder = value; break;
-            case "Хранилище": file.IsCopiedToStorage = value; break;
-            case "Эфир 25к": file.IsCopiedToEfir25 = value; break;
-            case "Кодер 25к": file.IsCopiedToCoder25 = value; break;
-            case "Сюжеты": file.IsCopiedToArchive = value; break;
+            case DestinationKeys.Site2: file.IsCopiedToSite2 = value; break;
+            case DestinationKeys.Efir: file.IsCopiedToEfir = value; break;
+            case DestinationKeys.CoderSite: file.IsCopiedToCoder = value; break;
+            case DestinationKeys.Storage: file.IsCopiedToStorage = value; break;
+            case DestinationKeys.Efir25: file.IsCopiedToEfir25 = value; break;
+            case DestinationKeys.Coder25: file.IsCopiedToCoder25 = value; break;
+            case DestinationKeys.Stories: file.IsCopiedToArchive = value; break;
         }
     }
 

@@ -55,7 +55,7 @@ public class FileCopyService
                     string site2Dir = Path.Combine(settings.Site2Archive, year, $"{mm}_{monthTitle}", dd);
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Site2 (архив)",
+                        Label = DestinationKeys.Site2,
                         DestinationPath = Path.Combine(site2Dir, file.FileName)
                     });
 
@@ -67,14 +67,14 @@ public class FileCopyService
                     }
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Эфир",
+                        Label = DestinationKeys.Efir,
                         DestinationPath = Path.Combine(settings.EfirPanorama, efirFileName)
                     });
 
                     // 3) Кодер Site
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Кодер Site",
+                        Label = DestinationKeys.CoderSite,
                         DestinationPath = Path.Combine(settings.CoderSite, file.FileName)
                     });
                     break;
@@ -86,7 +86,7 @@ public class FileCopyService
                     string newsDir = Path.Combine(settings.NewsStorage, year, $"{mm}_{monthLower}");
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Хранилище",
+                        Label = DestinationKeys.Storage,
                         DestinationPath = Path.Combine(newsDir, file.FileName),
                         CopyPathToClipboard = true
                     });
@@ -94,7 +94,7 @@ public class FileCopyService
                     // 2) Эфир 25к
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Эфир 25к",
+                        Label = DestinationKeys.Efir25,
                         DestinationPath = Path.Combine(settings.NewsEfir25, file.FileName),
                         CopyPathToClipboard = true
                     });
@@ -102,7 +102,7 @@ public class FileCopyService
                     // 3) Кодер 25к
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Кодер 25к",
+                        Label = DestinationKeys.Coder25,
                         DestinationPath = Path.Combine(settings.Coder25, file.FileName),
                         CopyPathToClipboard = true
                     });
@@ -115,7 +115,7 @@ public class FileCopyService
                     string archDir = Path.Combine(settings.ArchiveStories, year, $"{mm}_{monthUpper}");
                     destinations.Add(new CopyDestination
                     {
-                        Label = "Сюжеты",
+                        Label = DestinationKeys.Stories,
                         DestinationPath = Path.Combine(archDir, file.FileName)
                     });
                     break;
