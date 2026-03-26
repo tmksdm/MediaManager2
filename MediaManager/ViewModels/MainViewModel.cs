@@ -92,7 +92,7 @@ public partial class MainViewModel : INotifyPropertyChanged
     private readonly DispatcherTimer _statusRecheckTimer;
 
     /// <summary>Интервал фоновой проверки статусов (секунды)</summary>
-    private const int StatusRecheckIntervalSeconds = 30;
+    private const int StatusRecheckIntervalSeconds = 60;
 
     /// <summary>Флаг: идёт ли фоновая проверка статусов (защита от наложения)</summary>
     private bool _isRecheckingStatuses;
