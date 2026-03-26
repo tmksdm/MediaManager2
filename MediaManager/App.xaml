@@ -6,7 +6,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- [0] Стили кнопок (не зависят от темы) -->
                 <ResourceDictionary Source="Styles/ButtonStyles.xaml"/>
+                <!-- [1] Тема по умолчанию — светлая. Заменяется в App.xaml.cs -->
+                <ResourceDictionary Source="Styles/LightTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

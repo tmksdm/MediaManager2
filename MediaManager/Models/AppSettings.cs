@@ -50,6 +50,11 @@ public class AppSettings
     /// <summary>Сюжеты панорамы: \\Archive2\сюжеты панорамы 2\{year}\{MM}_{MONTH_UPPER}</summary>
     public string ArchiveStories { get; set; } = @"\\Archive2\сюжеты панорамы 2";
 
+    // --- Тема оформления ---
+
+    /// <summary>Тёмная тема включена (false = светлая)</summary>
+    public bool IsDarkTheme { get; set; } = false;
+
     // --- Позиция и размер окна ---
 
     /// <summary>Позиция окна X (Left). null = первый запуск, центрировать</summary>

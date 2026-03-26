@@ -1,0 +1,132 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================ -->
+    <!-- СВЕТЛАЯ ТЕМА — все цвета приложения          -->
+    <!-- Ключи должны совпадать с DarkTheme.xaml      -->
+    <!-- ============================================ -->
+
+    <!-- === Окно === -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush"      Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="WindowBorderBrush"          Color="#0D47A1"/>
+
+    <!-- === Title bar === -->
+    <SolidColorBrush x:Key="TitleBarBackgroundBrush"     Color="#1565C0"/>
+    <SolidColorBrush x:Key="TitleBarForegroundBrush"     Color="White"/>
+    <SolidColorBrush x:Key="TitleBarHoverBrush"          Color="#1976D2"/>
+    <SolidColorBrush x:Key="TitleBarPressBrush"          Color="#1565C0"/>
+    <SolidColorBrush x:Key="CloseButtonHoverBrush"       Color="#C62828"/>
+
+    <!-- === Toolbar (панель проекта + навигации) === -->
+    <SolidColorBrush x:Key="ToolbarBackgroundBrush"      Color="White"/>
+    <SolidColorBrush x:Key="ToolbarBorderBrush"          Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="ToolbarTextBrush"            Color="#212121"/>
+
+    <!-- === Навигация по датам === -->
+    <SolidColorBrush x:Key="NavButtonBackgroundBrush"    Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="NavButtonBorderBrush"        Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="NavButtonHoverBrush"         Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="NavButtonPressBrush"         Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="DateTextBrush"               Color="#212121"/>
+
+    <!-- === Поле ввода проекта === -->
+    <SolidColorBrush x:Key="InputBorderBrush"            Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="InputBackgroundBrush"        Color="White"/>
+    <SolidColorBrush x:Key="InputForegroundBrush"        Color="#212121"/>
+    <SolidColorBrush x:Key="InputDropdownBorderBrush"    Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="InputDropdownHoverBrush"     Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="InputDropdownPressBrush"     Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="InputDropdownForegroundBrush" Color="#757575"/>
+
+    <!-- === Popup (список проектов) === -->
+    <SolidColorBrush x:Key="PopupBackgroundBrush"        Color="White"/>
+    <SolidColorBrush x:Key="PopupBorderBrush"            Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="PopupItemHoverBrush"         Color="#E3F2FD"/>
+    <SolidColorBrush x:Key="PopupItemPressBrush"         Color="#BBDEFB"/>
+
+    <!-- === Панель экспортных имён === -->
+    <SolidColorBrush x:Key="ExportPanelBackgroundBrush"  Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="ExportPanelLabelBrush"       Color="#757575"/>
+    <SolidColorBrush x:Key="ExportPanelSeparatorBrush"   Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="ExportPanelNameBrush"        Color="#424242"/>
+    <SolidColorBrush x:Key="ExportPanelHintBrush"        Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="ExportNameHoverBrush"        Color="#E8F5E9"/>
+    <SolidColorBrush x:Key="ExportNamePressBrush"        Color="#C8E6C9"/>
+    <SolidColorBrush x:Key="ExportNameTextBrush"         Color="#212121"/>
+
+    <!-- === Список файлов === -->
+    <SolidColorBrush x:Key="FileCardBackgroundBrush"     Color="White"/>
+    <SolidColorBrush x:Key="FolderHeaderBackgroundBrush" Color="White"/>
+    <SolidColorBrush x:Key="FolderHeaderTextBrush"       Color="#424242"/>
+    <SolidColorBrush x:Key="FileNameBrush"               Color="#1565C0"/>
+    <SolidColorBrush x:Key="FileRowBorderBrush"          Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="FileRowAlternateBrush"       Color="#F7F5FA"/>
+    <SolidColorBrush x:Key="FileRowHoverBrush"           Color="#E3F2FD"/>
+    <SolidColorBrush x:Key="FileRowSelectedBrush"        Color="#BBDEFB"/>
+    <SolidColorBrush x:Key="ScrollViewerBackgroundBrush" Color="Transparent"/>
+
+    <!-- === Пустое состояние === -->
+    <SolidColorBrush x:Key="EmptyStateBackgroundBrush"   Color="White"/>
+    <SolidColorBrush x:Key="EmptyStatePrimaryBrush"      Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="EmptyStateSecondaryBrush"    Color="#BDBDBD"/>
+
+    <!-- === Status bar === -->
+    <SolidColorBrush x:Key="StatusBarBackgroundBrush"    Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="StatusBarBorderBrush"        Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="StatusBarTextBrush"          Color="#616161"/>
+    <SolidColorBrush x:Key="StatusBarSpeedBrush"         Color="#424242"/>
+    <SolidColorBrush x:Key="ProgressBarForegroundBrush"  Color="#1565C0"/>
+
+    <!-- === Панель очереди === -->
+    <SolidColorBrush x:Key="QueueBackgroundBrush"        Color="#FFF8E1"/>
+    <SolidColorBrush x:Key="QueueBorderBrush"            Color="#FFE082"/>
+    <SolidColorBrush x:Key="QueueTitleBrush"             Color="#F57F17"/>
+    <SolidColorBrush x:Key="QueueItemBorderBrush"        Color="#FFECB3"/>
+    <SolidColorBrush x:Key="QueueItemTextBrush"          Color="#5D4037"/>
+    <SolidColorBrush x:Key="QueueBadgeBackgroundBrush"   Color="#FFE082"/>
+    <SolidColorBrush x:Key="QueueBadgeTextBrush"         Color="#F57F17"/>
+    <SolidColorBrush x:Key="QueueRemoveForegroundBrush"  Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="QueueRemoveHoverBgBrush"     Color="#FFECB3"/>
+    <SolidColorBrush x:Key="QueueRemoveHoverFgBrush"     Color="#E65100"/>
+    <SolidColorBrush x:Key="QueueClearForegroundBrush"   Color="#F57F17"/>
+    <SolidColorBrush x:Key="QueueClearHoverBgBrush"      Color="#FFECB3"/>
+    <SolidColorBrush x:Key="QueueClearHoverFgBrush"      Color="#E65100"/>
+
+    <!-- === Журнал копирований === -->
+    <SolidColorBrush x:Key="LogBackgroundBrush"          Color="White"/>
+    <SolidColorBrush x:Key="LogBorderBrush"              Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="LogHeaderBackgroundBrush"    Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="LogHeaderTextBrush"          Color="#616161"/>
+    <SolidColorBrush x:Key="LogItemBorderBrush"          Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="LogTimeBrush"                Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="LogFileNameBrush"            Color="#424242"/>
+    <SolidColorBrush x:Key="LogSuccessBackgroundBrush"   Color="#E8F5E9"/>
+    <SolidColorBrush x:Key="LogSuccessForegroundBrush"   Color="#2E7D32"/>
+    <SolidColorBrush x:Key="LogErrorBackgroundBrush"     Color="#FFEBEE"/>
+    <SolidColorBrush x:Key="LogErrorForegroundBrush"     Color="#C62828"/>
+    <SolidColorBrush x:Key="LogCancelBackgroundBrush"    Color="#FFF3E0"/>
+    <SolidColorBrush x:Key="LogCancelForegroundBrush"    Color="#E65100"/>
+    <SolidColorBrush x:Key="LogDefaultBadgeBrush"        Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="LogDefaultBadgeTextBrush"    Color="#757575"/>
+
+    <!-- === Панель настроек === -->
+    <SolidColorBrush x:Key="SettingsBackgroundBrush"     Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="SettingsBorderBrush"         Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="SettingsTextBrush"           Color="#212121"/>
+    <SolidColorBrush x:Key="SettingsInputBackgroundBrush" Color="White"/>
+
+    <!-- === Кнопки: общие вспомогательные === -->
+    <SolidColorBrush x:Key="SmallCloseForegroundBrush"   Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="SmallCloseHoverBrush"        Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="PanelTextForegroundBrush"    Color="#9E9E9E"/>
+    <SolidColorBrush x:Key="PanelTextHoverBgBrush"       Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="PanelTextHoverFgBrush"       Color="#616161"/>
+
+    <!-- === Диалог эфира === -->
+    <SolidColorBrush x:Key="DialogBackgroundBrush"       Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="DialogCancelBgBrush"         Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="DialogCancelFgBrush"         Color="#616161"/>
+    <SolidColorBrush x:Key="DialogCancelHoverBrush"      Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="DialogCancelPressBrush"      Color="#9E9E9E"/>
+
+</ResourceDictionary>

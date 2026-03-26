@@ -14,14 +14,15 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Загружаем настройки и применяем тему ДО показа окна
+        var settings = SettingsService.Load();
+        ThemeService.ApplyTheme(settings.IsDarkTheme);
+
         // Перехват необработанных исключений в UI-потоке
         DispatcherUnhandledException += (sender, args) =>
         {
             LogService.Error("Необработанное исключение (UI)", args.Exception);
 
-            // Предлагаем пользователю выбор: закрыть или продолжить.
-            // В ньюсруме важнее не потерять работу, но после ошибки
-            // внутреннее состояние может быть нарушено — рекомендуем перезапуск.
             var result = MessageBox.Show(
                 $"Произошла ошибка:\n\n{args.Exception.Message}\n\n" +
                 "Подробности записаны в log.txt.\n\n" +
@@ -33,13 +34,10 @@ public partial class App : Application
 
             if (result == MessageBoxResult.Yes)
             {
-                // Пользователь выбрал закрыть — не помечаем как обработанное,
-                // приложение завершится
                 args.Handled = false;
             }
             else
             {
-                // Пользователь решил продолжить на свой риск
                 args.Handled = true;
             }
         };
@@ -57,7 +55,7 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (sender, args) =>
         {
             LogService.Error("Необработанное исключение (Task)", args.Exception);
-            args.SetObserved(); // Помечаем как обработанное
+            args.SetObserved();
         };
     }
 }
