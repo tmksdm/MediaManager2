@@ -12,6 +12,11 @@ namespace MediaManager.Views;
 /// Содержит Click-хэндлеры для кнопок копирования и открытия файлов/папок.
 /// DataContext наследуется от родительского окна (MainViewModel).
 /// MainViewModel берётся через Window.DataContext.
+/// 
+/// Клавиатурная навигация:
+///   ↑↓ — перемещение по файлам (стандартное поведение ListBox)
+///   Enter — открыть выделенный файл в плеере
+///   Правый клик мыши — открыть папку в Проводнике (не меняется)
 /// </summary>
 public partial class FileListPanel : UserControl
 {
@@ -29,6 +34,27 @@ public partial class FileListPanel : UserControl
     {
         var window = Window.GetWindow(this);
         return window?.DataContext as MainViewModel;
+    }
+
+    // ======================================================
+    // === Клавиатура: Enter на выделенном файле ===
+    // ======================================================
+
+    /// <summary>
+    /// Обработчик клавиатуры для ListBox файлов.
+    /// Enter — открыть выделенный файл.
+    /// Стрелки ↑↓ обрабатываются ListBox автоматически.
+    /// </summary>
+    private void FileListBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && sender is ListBox listBox)
+        {
+            if (listBox.SelectedItem is MediaFile file)
+            {
+                OpenFileInShell(file.FullPath);
+                e.Handled = true;
+            }
+        }
     }
 
     // ======================================================
@@ -64,14 +90,40 @@ public partial class FileListPanel : UserControl
 
     /// <summary>
     /// Левый клик по имени файла — открыть файл в плеере по умолчанию.
+    /// Дополнительно выделяем строку в ListBox и передаём ей клавиатурный фокус,
+    /// чтобы стрелки ↑↓ шли именно от этой строки.
     /// </summary>
     private void FileRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement element || element.DataContext is not MediaFile file)
             return;
 
+        // Выделяем строку в ListBox и передаём фокус на ListBoxItem
+        var listBoxItem = FindAncestor<ListBoxItem>(element);
+        var listBox = FindAncestor<ListBox>(element);
+        if (listBox != null && listBoxItem != null)
+        {
+            listBox.SelectedItem = file;
+            // Фокус на конкретный ListBoxItem — стрелки пойдут от него
+            listBoxItem.Focus();
+        }
+
         OpenFileInShell(file.FullPath);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Ищет родительский элемент указанного типа в визуальном дереве.
+    /// </summary>
+    private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+    {
+        while (current != null)
+        {
+            if (current is T result)
+                return result;
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     /// <summary>
