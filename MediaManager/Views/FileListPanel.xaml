@@ -51,9 +51,13 @@
                                                         <Setter Property="Background" Value="Transparent"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter},
-                                                                         Path=(ItemsControl.AlternationIndex)}" Value="1">
+                         Path=(ItemsControl.AlternationIndex)}" Value="1">
                                                                 <Setter Property="Background" Value="#F7F5FA"/>
                                                             </DataTrigger>
+                                                            <!-- Подсветка строки при наведении мыши -->
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#E3F2FD"/>
+                                                            </Trigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
