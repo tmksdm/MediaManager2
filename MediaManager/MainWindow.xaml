@@ -10,14 +10,23 @@
         AllowsTransparency="True"
         Background="Transparent">
 
-    <Border BorderBrush="#0D47A1" BorderThickness="1" Background="#F5F5F5">
+    <Border BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1"
+            Background="{DynamicResource WindowBackgroundBrush}">
         <DockPanel>
 
             <!-- === TITLE BAR === -->
-            <Border DockPanel.Dock="Top" Background="#1565C0"
+            <Border DockPanel.Dock="Top" Background="{DynamicResource TitleBarBackgroundBrush}"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <DockPanel Height="40">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <!-- Кнопка переключения темы -->
+                        <Button x:Name="themeToggleButton"
+                                Click="ThemeToggleButton_Click"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                Width="Auto" Padding="10,0" FontSize="14"
+                                ToolTip="Переключить тему">
+                            <TextBlock x:Name="themeButtonIcon" Text="🌙"/>
+                        </Button>
                         <Button Content="⚙ Настройки"
                                 Command="{Binding ToggleSettingsCommand}"
                                 Style="{StaticResource TitleBarButtonStyle}"
@@ -32,11 +41,13 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                         <Viewbox Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0">
                             <Canvas Width="24" Height="24">
-                                <Path Fill="White" Data="M21,17 L3,17 L3,5 L21,5 L21,17 Z M1,5 C1,3.9 1.9,3 3,3 L21,3 C22.1,3 23,3.9 23,5 L23,17 C23,18.1 22.1,19 21,19 L13,19 L13,21 L16,21 L16,23 L8,23 L8,21 L11,21 L11,19 L3,19 C1.9,19 1,18.1 1,17 L1,5 Z"/>
+                                <Path Fill="{DynamicResource TitleBarForegroundBrush}"
+                                      Data="M21,17 L3,17 L3,5 L21,5 L21,17 Z M1,5 C1,3.9 1.9,3 3,3 L21,3 C22.1,3 23,3.9 23,5 L23,17 C23,18.1 22.1,19 21,19 L13,19 L13,21 L16,21 L16,23 L8,23 L8,21 L11,21 L11,19 L3,19 C1.9,19 1,18.1 1,17 L1,5 Z"/>
                             </Canvas>
                         </Viewbox>
                         <TextBlock Text="Медиа-менеджер" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="White" VerticalAlignment="Center"/>
+                                   Foreground="{DynamicResource TitleBarForegroundBrush}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -48,8 +59,8 @@
                                               Converter={StaticResource BoolToVis}}"/>
 
             <!-- === TOOLBAR: ПРОЕКТ + ДАТА + ОБНОВИТЬ === -->
-            <Border DockPanel.Dock="Top" Background="White"
-                    BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Border DockPanel.Dock="Top" Background="{DynamicResource ToolbarBackgroundBrush}"
+                    BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="0,0,0,1">
                 <StackPanel>
 
                     <!-- Верхняя строка: создание проекта + навигация -->
@@ -59,6 +70,7 @@
                             <Button Content="◀" Command="{Binding NavigateBackCommand}"
                                     Style="{StaticResource NavButtonStyle}" Margin="0,0,8,0"/>
                             <TextBlock Text="{Binding SelectedDateText}" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource DateTextBrush}"
                                        VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <Button Content="▶" Command="{Binding NavigateForwardCommand}"
                                     Style="{StaticResource NavButtonStyle}" Margin="0,0,12,0"/>
@@ -71,11 +83,14 @@
 
                         <!-- Левая часть: создание проекта -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Имя проекта:" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock Text="Имя проекта:" FontSize="14"
+                                       Foreground="{DynamicResource ToolbarTextBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                             <!-- Поле ввода + кнопка ▼ в одной рамке -->
                             <Border x:Name="projectInputBorder"
-                                    BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="4"
+                                    BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" CornerRadius="4"
+                                    Background="{DynamicResource InputBackgroundBrush}"
                                     Height="32" Margin="0,0,10,0">
                                 <DockPanel>
                                     <Button x:Name="projectDropdownButton"
@@ -84,20 +99,22 @@
                                             Width="28" Cursor="Hand"
                                             Command="{Binding ToggleProjectListCommand}"
                                             Background="Transparent" BorderThickness="0"
-                                            Foreground="#757575" VerticalAlignment="Stretch"
+                                            Foreground="{DynamicResource InputDropdownForegroundBrush}"
+                                            VerticalAlignment="Stretch"
                                             Visibility="{Binding HasTodayProjects, Converter={StaticResource BoolToVis}}">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
                                                 <Border Background="{TemplateBinding Background}"
-                                                        BorderBrush="#E0E0E0" BorderThickness="1,0,0,0">
+                                                        BorderBrush="{DynamicResource InputDropdownBorderBrush}"
+                                                        BorderThickness="1,0,0,0">
                                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#F0F0F0"/>
+                                                        <Setter Property="Background" Value="{DynamicResource InputDropdownHoverBrush}"/>
                                                     </Trigger>
                                                     <Trigger Property="IsPressed" Value="True">
-                                                        <Setter Property="Background" Value="#E0E0E0"/>
+                                                        <Setter Property="Background" Value="{DynamicResource InputDropdownPressBrush}"/>
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -109,6 +126,9 @@
                                              FontSize="14" VerticalContentAlignment="Center"
                                              Padding="8,0" BorderThickness="0"
                                              Width="330"
+                                             Background="{DynamicResource InputBackgroundBrush}"
+                                             Foreground="{DynamicResource InputForegroundBrush}"
+                                             CaretBrush="{DynamicResource InputForegroundBrush}"
                                              PreviewMouseLeftButtonDown="ProjectNameTextBox_PreviewMouseLeftButtonDown"
                                              TextChanged="ProjectNameTextBox_TextChanged"/>
                                 </DockPanel>
@@ -126,7 +146,8 @@
                                    IsOpen="{Binding IsProjectListOpen, Mode=TwoWay}"
                                    AllowsTransparency="True"
                                    PopupAnimation="Slide">
-                                <Border Background="White" BorderBrush="#BDBDBD" BorderThickness="1"
+                                <Border Background="{DynamicResource PopupBackgroundBrush}"
+                                        BorderBrush="{DynamicResource PopupBorderBrush}" BorderThickness="1"
                                         CornerRadius="4" Padding="0,4"
                                         MinWidth="350" MaxHeight="300">
                                     <Border.Effect>
@@ -152,18 +173,22 @@
 
                     <!-- Панель имён для экспорта (появляется после выбора проекта) -->
                     <Border Margin="16,6,16,10"
-                            Background="#F5F5F5" CornerRadius="6" Padding="12,8"
+                            Background="{DynamicResource ExportPanelBackgroundBrush}"
+                            CornerRadius="6" Padding="12,8"
                             Visibility="{Binding HasExportNames, Converter={StaticResource BoolToVis}}">
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
                                 <Button DockPanel.Dock="Right" Content="✕"
                                         Style="{StaticResource SmallCloseButtonStyle}"
                                         Click="CloseExportPanel_Click"/>
-                                <TextBlock FontSize="12" Foreground="#757575" VerticalAlignment="Center">
+                                <TextBlock FontSize="12" Foreground="{DynamicResource ExportPanelLabelBrush}"
+                                           VerticalAlignment="Center">
                                     <Run Text="Имена для экспорта"/>
-                                    <Run Text="—" Foreground="#BDBDBD"/>
-                                    <Run Text="{Binding SelectedProject, Mode=OneWay}" FontWeight="SemiBold" Foreground="#424242"/>
-                                    <Run Text="  (клик = копировать)" Foreground="#9E9E9E" FontSize="11"/>
+                                    <Run Text="—" Foreground="{DynamicResource ExportPanelSeparatorBrush}"/>
+                                    <Run Text="{Binding SelectedProject, Mode=OneWay}" FontWeight="SemiBold"
+                                         Foreground="{DynamicResource ExportPanelNameBrush}"/>
+                                    <Run Text="  (клик = копировать)"
+                                         Foreground="{DynamicResource ExportPanelHintBrush}" FontSize="11"/>
                                 </TextBlock>
                             </DockPanel>
 
@@ -207,7 +232,8 @@
                                                                HorizontalAlignment="Center"/>
                                                 </Border>
                                                 <TextBlock Text="{Binding Name}" FontSize="12"
-                                                           Foreground="#212121" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource ExportNameTextBrush}"
+                                                           VerticalAlignment="Center"
                                                            FontFamily="Consolas"/>
                                             </StackPanel>
                                         </Button>
@@ -221,8 +247,9 @@
             </Border>
 
             <!-- === STATUS BAR + PROGRESS (внизу) === -->
-            <Border DockPanel.Dock="Bottom" Background="#E0E0E0" Padding="16,6"
-                    BorderBrush="#BDBDBD" BorderThickness="0,1,0,0">
+            <Border DockPanel.Dock="Bottom" Background="{DynamicResource StatusBarBackgroundBrush}"
+                    Padding="16,6"
+                    BorderBrush="{DynamicResource StatusBarBorderBrush}" BorderThickness="0,1,0,0">
                 <DockPanel>
                     <Button DockPanel.Dock="Right"
                             Content="✕ Отменить всё"
@@ -234,7 +261,8 @@
                     <!-- Скорость и оставшееся время -->
                     <TextBlock DockPanel.Dock="Right"
                                Text="{Binding CopySpeedText}"
-                               FontSize="12" Foreground="#424242" FontWeight="SemiBold"
+                               FontSize="12" Foreground="{DynamicResource StatusBarSpeedBrush}"
+                               FontWeight="SemiBold"
                                VerticalAlignment="Center" Margin="10,0,0,0"
                                Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
 
@@ -243,9 +271,10 @@
                                  Minimum="0" Maximum="100"
                                  Value="{Binding CopyProgress}"
                                  Margin="12,0,0,0"
-                                 Foreground="#1565C0"
+                                 Foreground="{DynamicResource ProgressBarForegroundBrush}"
                                  Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#616161"
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12"
+                               Foreground="{DynamicResource StatusBarTextBrush}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
             </Border>

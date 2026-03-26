@@ -12,11 +12,11 @@ namespace MediaManager;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _mainViewModel;
+    private readonly SettingsViewModel _settingsViewModel;
 
     /// <summary>
     /// Запоминаем размер и позицию окна в Normal-состоянии,
     /// чтобы при закрытии из Maximized сохранить именно Normal-размеры.
-    /// Иначе при следующем запуске окно будет на весь экран без возможности вернуться.
     /// </summary>
     private double _restoreLeft;
     private double _restoreTop;
@@ -27,30 +27,43 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        var settingsViewModel = new SettingsViewModel();
-        _mainViewModel = new MainViewModel(settingsViewModel);
+        _settingsViewModel = new SettingsViewModel();
+        _mainViewModel = new MainViewModel(_settingsViewModel);
 
         DataContext = _mainViewModel;
-        settingsPanel.DataContext = settingsViewModel;
+        settingsPanel.DataContext = _settingsViewModel;
+
+        // Устанавливаем иконку кнопки темы при старте
+        UpdateThemeButtonIcon();
 
         // Загружаем позицию и размер окна из настроек
-        RestoreWindowPosition(settingsViewModel.GetSettings());
+        RestoreWindowPosition(_settingsViewModel.GetSettings());
 
-        // Подписываемся на нажатия клавиш для всего окна
         PreviewKeyDown += MainWindow_PreviewKeyDown;
-
-        // Подключаем обработку ресайза через WinAPI после загрузки окна
         SourceInitialized += MainWindow_SourceInitialized;
-
-        // Закрытие Popup при клике за его пределами (для программного открытия)
         PreviewMouseLeftButtonDown += MainWindow_PreviewMouseLeftButtonDown;
-
-        // При закрытии — сохраняем позицию и освобождаем ресурсы
         Closed += MainWindow_Closed;
 
-        // Запоминаем Normal-размеры при каждом перемещении/ресайзе
         LocationChanged += (_, _) => RememberNormalBounds();
         SizeChanged += (_, _) => RememberNormalBounds();
+    }
+
+    // ======================================================
+    // === Переключение темы ===
+    // ======================================================
+
+    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        _settingsViewModel.ToggleThemeCommand.Execute(null);
+        UpdateThemeButtonIcon();
+    }
+
+    /// <summary>
+    /// Обновляет иконку кнопки темы: 🌙 для светлой, ☀ для тёмной.
+    /// </summary>
+    private void UpdateThemeButtonIcon()
+    {
+        themeButtonIcon.Text = _settingsViewModel.IsDarkTheme ? "☀" : "🌙";
     }
 
     // ======================================================
@@ -155,7 +168,7 @@ public partial class MainWindow : Window
 
     private void SaveWindowPosition()
     {
-        var settings = ((SettingsViewModel)settingsPanel.DataContext).GetSettings();
+        var settings = _settingsViewModel.GetSettings();
 
         settings.WindowLeft = _restoreLeft;
         settings.WindowTop = _restoreTop;

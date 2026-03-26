@@ -3,25 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <UserControl.Resources>
-        <!-- Стиль для ListBox файлов внутри каждой папки.
-             Убираем стандартное оформление ListBox (рамки, фон)
-             и настраиваем выделение/hover для элементов. -->
+        <!-- Стиль для ListBox файлов внутри каждой папки -->
         <Style x:Key="FileListBoxStyle" TargetType="ListBox">
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <!-- Клавиатурная навигация внутри ListBox -->
             <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle"/>
         </Style>
 
-        <!-- Стиль для каждой строки файла (ListBoxItem).
-             Три состояния:
-             1) Обычное — белый или чередующийся #F7F5FA
-             2) Hover мыши — светло-голубой #E3F2FD
-             3) Выделено (клавиатура/клик) — голубой #BBDEFB
-             Hover и Selection независимы: при движении мыши выделение не сбрасывается. -->
+        <!-- Стиль для каждой строки файла (ListBoxItem) -->
         <Style x:Key="FileListBoxItemStyle" TargetType="ListBoxItem">
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Padding" Value="0"/>
@@ -31,22 +23,23 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Border x:Name="ItemBorder"
-                                BorderBrush="#F0F0F0" BorderThickness="0,0,0,1"
+                                BorderBrush="{DynamicResource FileRowBorderBrush}"
+                                BorderThickness="0,0,0,1"
                                 Padding="8,6" Background="Transparent">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- Чередование: нечётные строки — слегка сиреневые -->
                             <Trigger Property="ItemsControl.AlternationIndex" Value="1">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#F7F5FA"/>
+                                <Setter TargetName="ItemBorder" Property="Background"
+                                        Value="{DynamicResource FileRowAlternateBrush}"/>
                             </Trigger>
-                            <!-- Hover мыши — светло-голубой -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#E3F2FD"/>
+                                <Setter TargetName="ItemBorder" Property="Background"
+                                        Value="{DynamicResource FileRowHoverBrush}"/>
                             </Trigger>
-                            <!-- Выделение (клик или стрелки) — более насыщенный голубой -->
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#BBDEFB"/>
+                                <Setter TargetName="ItemBorder" Property="Background"
+                                        Value="{DynamicResource FileRowSelectedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -55,17 +48,21 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16"
+                  Background="{DynamicResource ScrollViewerBackgroundBrush}">
         <Grid>
             <!-- Пустое состояние -->
-            <Border Background="White" CornerRadius="8" Padding="24" MinHeight="200"
+            <Border Background="{DynamicResource EmptyStateBackgroundBrush}"
+                    CornerRadius="8" Padding="24" MinHeight="200"
                     Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                     <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,12"/>
                     <TextBlock Text="Файлы для выбранной даты не найдены"
-                               FontSize="16" Foreground="#9E9E9E" HorizontalAlignment="Center"/>
+                               FontSize="16" Foreground="{DynamicResource EmptyStatePrimaryBrush}"
+                               HorizontalAlignment="Center"/>
                     <TextBlock Text="Попробуйте выбрать другую дату или нажмите «Обновить»"
-                               FontSize="13" Foreground="#BDBDBD" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                               FontSize="13" Foreground="{DynamicResource EmptyStateSecondaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -83,14 +80,16 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="White" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                        <Border Background="{DynamicResource FileCardBackgroundBrush}"
+                                CornerRadius="8" Padding="16" Margin="0,0,0,12">
                             <StackPanel>
-                                <Border Background="White" CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+                                <Border Background="{DynamicResource FolderHeaderBackgroundBrush}"
+                                        CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
                                     <TextBlock Text="{Binding FolderName}" FontSize="14"
-                                               FontWeight="SemiBold" Foreground="#424242"/>
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource FolderHeaderTextBrush}"/>
                                 </Border>
 
-                                <!-- ListBox вместо ItemsControl — поддерживает выделение и клавиатуру -->
                                 <ListBox ItemsSource="{Binding Files}"
                                          AlternationCount="2"
                                          Style="{StaticResource FileListBoxStyle}"
@@ -338,7 +337,8 @@
                                                                    HorizontalAlignment="Center"/>
                                                     </Border>
                                                     <TextBlock Text="{Binding DisplayName}" FontSize="13"
-                                                               Foreground="#1565C0" VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource FileNameBrush}"
+                                                               VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis"
                                                                Cursor="Hand"
                                                                MouseLeftButtonDown="FileRow_MouseLeftButtonDown"

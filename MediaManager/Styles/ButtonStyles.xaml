@@ -3,15 +3,16 @@
 
     <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-    <!-- Стиль кнопок навигации -->
+    <!-- Стиль кнопок навигации ◀ ▶ -->
     <Style x:Key="NavButtonStyle" TargetType="Button">
         <Setter Property="Width" Value="40"/>
         <Setter Property="Height" Value="32"/>
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="#E0E0E0"/>
-        <Setter Property="BorderBrush" Value="#BDBDBD"/>
+        <Setter Property="Background" Value="{DynamicResource NavButtonBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource NavButtonBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ToolbarTextBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -24,10 +25,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#BDBDBD"/>
+                            <Setter Property="Background" Value="{DynamicResource NavButtonHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="#9E9E9E"/>
+                            <Setter Property="Background" Value="{DynamicResource NavButtonPressBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -35,7 +36,7 @@
         </Setter>
     </Style>
 
-    <!-- Стиль цветных кнопок -->
+    <!-- Стиль цветных кнопок (Сегодня, Обновить, Создать проект) -->
     <Style x:Key="ActionButtonStyle" TargetType="Button">
         <Setter Property="Height" Value="32"/>
         <Setter Property="Padding" Value="16,0"/>
@@ -140,7 +141,7 @@
         <Setter Property="Width" Value="46"/>
         <Setter Property="Height" Value="36"/>
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource TitleBarForegroundBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -153,10 +154,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#1976D2"/>
+                            <Setter Property="Background" Value="{DynamicResource TitleBarHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="#1565C0"/>
+                            <Setter Property="Background" Value="{DynamicResource TitleBarPressBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -174,10 +175,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#C62828"/>
+                            <Setter Property="Background" Value="{DynamicResource CloseButtonHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="#C62828"/>
+                            <Setter Property="Background" Value="{DynamicResource CloseButtonHoverBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -188,6 +189,7 @@
     <!-- Стиль элементов в списке проектов (Popup) -->
     <Style x:Key="ProjectListItemStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource ToolbarTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Padding" Value="12,8"/>
@@ -202,10 +204,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#E3F2FD"/>
+                            <Setter Property="Background" Value="{DynamicResource PopupItemHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="#BBDEFB"/>
+                            <Setter Property="Background" Value="{DynamicResource PopupItemPressBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -229,10 +231,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#E8F5E9"/>
+                            <Setter Property="Background" Value="{DynamicResource ExportNameHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="#C8E6C9"/>
+                            <Setter Property="Background" Value="{DynamicResource ExportNamePressBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -240,10 +242,10 @@
         </Setter>
     </Style>
 
-    <!-- Стиль кнопки-крестика (закрытие панелей, удаление из очереди) -->
+    <!-- Стиль кнопки-крестика (закрытие панелей) -->
     <Style x:Key="SmallCloseButtonStyle" TargetType="Button">
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Foreground" Value="#9E9E9E"/>
+        <Setter Property="Foreground" Value="{DynamicResource SmallCloseForegroundBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -257,7 +259,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#E0E0E0"/>
+                            <Setter Property="Background" Value="{DynamicResource SmallCloseHoverBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -268,7 +270,7 @@
     <!-- Стиль текстовой кнопки панелей (Очистить, Свернуть/Развернуть) -->
     <Style x:Key="PanelTextButtonStyle" TargetType="Button">
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Foreground" Value="#9E9E9E"/>
+        <Setter Property="Foreground" Value="{DynamicResource PanelTextForegroundBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -282,8 +284,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#F0F0F0"/>
-                            <Setter Property="Foreground" Value="#616161"/>
+                            <Setter Property="Background" Value="{DynamicResource PanelTextHoverBgBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource PanelTextHoverFgBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -294,7 +296,7 @@
     <!-- Стиль кнопки удаления из очереди -->
     <Style x:Key="QueueRemoveButtonStyle" TargetType="Button">
         <Setter Property="FontSize" Value="10"/>
-        <Setter Property="Foreground" Value="#BDBDBD"/>
+        <Setter Property="Foreground" Value="{DynamicResource QueueRemoveForegroundBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -308,8 +310,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#FFECB3"/>
-                            <Setter Property="Foreground" Value="#E65100"/>
+                            <Setter Property="Background" Value="{DynamicResource QueueRemoveHoverBgBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource QueueRemoveHoverFgBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -320,7 +322,7 @@
     <!-- Стиль кнопки «Очистить очередь» -->
     <Style x:Key="QueueClearButtonStyle" TargetType="Button">
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Foreground" Value="#F57F17"/>
+        <Setter Property="Foreground" Value="{DynamicResource QueueClearForegroundBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -334,8 +336,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#FFECB3"/>
-                            <Setter Property="Foreground" Value="#E65100"/>
+                            <Setter Property="Background" Value="{DynamicResource QueueClearHoverBgBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource QueueClearHoverFgBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

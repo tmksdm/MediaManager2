@@ -7,6 +7,7 @@ namespace MediaManager;
 /// Точка входа приложения.
 /// Здесь перехватываем все необработанные исключения,
 /// чтобы программа не падала молча, а записывала ошибку в лог.
+/// Также применяем тему (светлая/тёмная) до показа главного окна.
 /// </summary>
 public partial class App : Application
 {
@@ -14,7 +15,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Загружаем настройки и применяем тему ДО показа окна
+        // Применяем сохранённую тему ДО показа окна.
+        // Настройки загружаются из settings.json.
+        // ThemeService заменяет словарь [1] в MergedDictionaries.
         var settings = SettingsService.Load();
         ThemeService.ApplyTheme(settings.IsDarkTheme);
 
@@ -23,6 +26,9 @@ public partial class App : Application
         {
             LogService.Error("Необработанное исключение (UI)", args.Exception);
 
+            // Предлагаем пользователю выбор: закрыть или продолжить.
+            // В ньюсруме важнее не потерять работу, но после ошибки
+            // внутреннее состояние может быть нарушено — рекомендуем перезапуск.
             var result = MessageBox.Show(
                 $"Произошла ошибка:\n\n{args.Exception.Message}\n\n" +
                 "Подробности записаны в log.txt.\n\n" +

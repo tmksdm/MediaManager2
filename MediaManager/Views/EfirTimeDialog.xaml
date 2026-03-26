@@ -6,7 +6,7 @@
         WindowStartupLocation="CenterOwner"
         WindowStyle="SingleBorderWindow"
         ResizeMode="NoResize"
-        Background="#F5F5F5">
+        Background="{DynamicResource DialogBackgroundBrush}">
 
     <StackPanel Margin="24,16,24,20">
 
@@ -20,8 +20,8 @@
                 HorizontalAlignment="Center"
                 Cursor="Hand"
                 FontSize="13"
-                Foreground="#616161"
-                Background="#E0E0E0"
+                Foreground="{DynamicResource DialogCancelFgBrush}"
+                Background="{DynamicResource DialogCancelBgBrush}"
                 BorderThickness="0">
             <Button.Template>
                 <ControlTemplate TargetType="Button">
@@ -33,10 +33,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#BDBDBD"/>
+                            <Setter Property="Background" Value="{DynamicResource DialogCancelHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background" Value="#9E9E9E"/>
+                            <Setter Property="Background" Value="{DynamicResource DialogCancelPressBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

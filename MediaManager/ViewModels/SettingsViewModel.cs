@@ -85,7 +85,6 @@ public class SettingsViewModel : INotifyPropertyChanged
                 _settings.SearchFolder = value;
                 OnPropertyChanged();
                 Save();
-                // Папка поиска изменилась — нужно пересоздать FileSystemWatcher
                 SettingsChanged?.Invoke();
             }
         }
@@ -101,7 +100,6 @@ public class SettingsViewModel : INotifyPropertyChanged
                 _settings.AdditionalSearchFolder = value;
                 OnPropertyChanged();
                 Save();
-                // Дополнительная папка поиска изменилась — пересоздать FileSystemWatcher
                 SettingsChanged?.Invoke();
             }
         }
@@ -205,6 +203,23 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Тёмная тема включена</summary>
+    public bool IsDarkTheme
+    {
+        get => _settings.IsDarkTheme;
+        set
+        {
+            if (_settings.IsDarkTheme != value)
+            {
+                _settings.IsDarkTheme = value;
+                OnPropertyChanged();
+                Save();
+                // Применяем тему мгновенно
+                ThemeService.ApplyTheme(value);
+            }
+        }
+    }
+
     // ==============================
     // Команды для кнопок "Обзор..."
     // ==============================
@@ -222,18 +237,17 @@ public class SettingsViewModel : INotifyPropertyChanged
     public RelayCommand BrowseCoder25Command { get; }
     public RelayCommand BrowseArchiveStoriesCommand { get; }
 
+    /// <summary>Команда переключения темы (для кнопки в title bar)</summary>
+    public RelayCommand ToggleThemeCommand { get; }
+
     // ==============================
     // Конструктор
     // ==============================
 
     public SettingsViewModel()
     {
-        // Загружаем настройки из файла (или значения по умолчанию)
         _settings = SettingsService.Load();
 
-        // Создаём команды для каждой кнопки "Обзор..."
-        // Для папок — открывается диалог выбора папки
-        // Для файла шаблона — диалог выбора файла
         BrowseProjectBaseFolderCommand = new RelayCommand(_ => BrowseFolder(v => ProjectBaseFolder = v));
         BrowseSourceTemplateFileCommand = new RelayCommand(_ => BrowseFile(v => SourceTemplateFile = v,
             "Premiere Pro Project (*.prproj)|*.prproj|Все файлы (*.*)|*.*"));
@@ -248,24 +262,20 @@ public class SettingsViewModel : INotifyPropertyChanged
         BrowseNewsEfir25Command = new RelayCommand(_ => BrowseFolder(v => NewsEfir25 = v));
         BrowseCoder25Command = new RelayCommand(_ => BrowseFolder(v => Coder25 = v));
         BrowseArchiveStoriesCommand = new RelayCommand(_ => BrowseFolder(v => ArchiveStories = v));
+
+        // Переключение темы: инвертируем IsDarkTheme
+        ToggleThemeCommand = new RelayCommand(_ => IsDarkTheme = !IsDarkTheme);
     }
 
     // ==============================
     // Вспомогательные методы
     // ==============================
 
-    /// <summary>
-    /// Сохранить настройки в файл
-    /// </summary>
     private void Save()
     {
         SettingsService.Save(_settings);
     }
 
-    /// <summary>
-    /// Открыть диалог выбора папки.
-    /// Если пользователь выбрал папку — вызвать setter, который обновит свойство.
-    /// </summary>
     private static void BrowseFolder(Action<string> setter)
     {
         var dialog = new OpenFolderDialog
@@ -279,9 +289,6 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Открыть диалог выбора файла с указанным фильтром.
-    /// </summary>
     private static void BrowseFile(Action<string> setter, string filter)
     {
         var dialog = new OpenFileDialog
