@@ -219,16 +219,9 @@ public class ProjectCreationService
 
         names.Add(new ExportName
         {
-            TypeLabel = "АРХИВ",
-            Name = $"{datePrefix}_{processedName}_",
-            TypeColor = "#43A047"
-        });
-
-        names.Add(new ExportName
-        {
-            TypeLabel = "НОВОСТИ",
-            Name = $"НОВОСТИ_{datePrefixCompact}_{newsName}_",
-            TypeColor = "#C62828"
+            TypeLabel = "ДАЙДЖЕСТ",
+            Name = $"ПАНОРАМА_ДАЙДЖЕСТ_00_{datePrefix}_{processedName}_",
+            TypeColor = "#5C6BC0"
         });
 
         names.Add(new ExportName
@@ -240,9 +233,16 @@ public class ProjectCreationService
 
         names.Add(new ExportName
         {
-            TypeLabel = "ДАЙДЖЕСТ",
-            Name = $"ПАНОРАМА_ДАЙДЖЕСТ_00_{datePrefix}_{processedName}_",
-            TypeColor = "#5C6BC0"
+            TypeLabel = "АРХИВ",
+            Name = $"{datePrefix}_{processedName}_",
+            TypeColor = "#43A047"
+        });
+
+        names.Add(new ExportName
+        {
+            TypeLabel = "НОВОСТИ",
+            Name = $"НОВОСТИ_{datePrefixCompact}_{newsName}_",
+            TypeColor = "#C62828"
         });
 
         return names;
