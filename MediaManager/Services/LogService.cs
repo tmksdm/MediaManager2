@@ -4,16 +4,26 @@ namespace MediaManager.Services;
 
 /// <summary>
 /// Простой сервис логирования ошибок в текстовый файл.
-/// Файл log.txt создаётся рядом с .exe программы.
+/// Файл log.txt создаётся в %AppData%/MediaManager/ — у каждого пользователя свой.
 /// 
 /// Записывает только ошибки — чтобы лог не засорялся.
 /// Файл автоматически очищается, если превышает 5 МБ.
 /// </summary>
 public static class LogService
 {
-    /// <summary>Путь к файлу лога (рядом с .exe)</summary>
+    /// <summary>
+    /// Папка для данных приложения: %AppData%/MediaManager/
+    /// У каждого пользователя Windows своя — файлы не пересекаются,
+    /// даже если .exe запускается из сетевой папки несколькими людьми.
+    /// </summary>
+    private static readonly string AppDataFolder =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "MediaManager");
+
+    /// <summary>Путь к файлу лога</summary>
     private static readonly string LogFilePath =
-        Path.Combine(AppContext.BaseDirectory, "log.txt");
+        Path.Combine(AppDataFolder, "log.txt");
 
     /// <summary>Максимальный размер лога — 5 МБ. При превышении файл очищается.</summary>
     private const long MaxLogSizeBytes = 5 * 1024 * 1024;
@@ -52,6 +62,9 @@ public static class LogService
         {
             lock (_lock)
             {
+                // Создаём папку, если её ещё нет (первый запуск)
+                Directory.CreateDirectory(AppDataFolder);
+
                 // Проверяем размер файла — если слишком большой, очищаем
                 TrimIfNeeded();
 

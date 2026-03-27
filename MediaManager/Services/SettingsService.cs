@@ -8,11 +8,24 @@ namespace MediaManager.Services;
 
 /// <summary>
 /// Загружает и сохраняет настройки в файл settings.json.
+/// Файл хранится в %AppData%/MediaManager/ — у каждого пользователя свой.
+/// Это важно, потому что .exe может запускаться из сетевой папки
+/// несколькими монтажёрами одновременно — каждый получит свои настройки.
 /// </summary>
 public static class SettingsService
 {
+    /// <summary>
+    /// Папка для данных приложения: %AppData%/MediaManager/
+    /// Например: C:\Users\Вася\AppData\Roaming\MediaManager\
+    /// </summary>
+    private static readonly string AppDataFolder =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "MediaManager");
+
+    /// <summary>Путь к файлу настроек</summary>
     private static readonly string SettingsFilePath =
-        Path.Combine(AppContext.BaseDirectory, "settings.json");
+        Path.Combine(AppDataFolder, "settings.json");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -52,6 +65,9 @@ public static class SettingsService
     {
         try
         {
+            // Создаём папку, если её ещё нет (первый запуск)
+            Directory.CreateDirectory(AppDataFolder);
+
             string json = JsonSerializer.Serialize(settings, JsonOptions);
             File.WriteAllText(SettingsFilePath, json);
         }
