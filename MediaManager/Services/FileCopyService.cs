@@ -156,6 +156,10 @@ public class FileCopyService
     /// Создаёт папки назначения если их нет.
     /// Прогресс сообщается не чаще 20 раз в секунду, чтобы не забивать UI-поток
     /// и не блокировать обработку кликов (например, кнопки «Отмена»).
+    /// 
+    /// Файл сначала копируется с расширением .tmp, а после завершения
+    /// переименовывается в финальное имя. Это предотвращает подхват
+    /// неполного файла программами-мониторами (Adobe Media Encoder и т.п.).
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
@@ -163,6 +167,10 @@ public class FileCopyService
         IProgress<CopyProgressInfo>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        // Временный путь: файл.mp4 → файл.mp4.tmp
+        // Adobe Media Encoder не мониторит .tmp — файл невидим до переименования
+        string tempPath = destPath + ".tmp";
+
         try
         {
             string? destDir = Path.GetDirectoryName(destPath);
@@ -187,12 +195,12 @@ public class FileCopyService
             // Момент начала копирования — для расчёта средней скорости
             var copyStart = DateTime.UtcNow;
 
-            // Копируем содержимое файла
+            // Копируем содержимое во временный файл (.tmp)
             using (var sourceStream = new FileStream(
                 sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
                 bufferSize, useAsync: true))
             using (var destStream = new FileStream(
-                destPath, FileMode.Create, FileAccess.Write, FileShare.None,
+                tempPath, FileMode.Create, FileAccess.Write, FileShare.None,
                 bufferSize, useAsync: true))
             {
                 int bytesRead;
@@ -232,11 +240,21 @@ public class FileCopyService
                     }
                 }
             }
-            // Потоки закрыты — теперь безопасно ставить время
+            // Потоки закрыты — теперь безопасно ставить время на .tmp файл
 
-            // Копируем и время модификации, и время создания
-            File.SetLastWriteTime(destPath, sourceInfo.LastWriteTime);
-            File.SetCreationTime(destPath, sourceInfo.CreationTime);
+            // Копируем и время модификации, и время создания (на .tmp)
+            File.SetLastWriteTime(tempPath, sourceInfo.LastWriteTime);
+            File.SetCreationTime(tempPath, sourceInfo.CreationTime);
+
+            // Если финальный файл уже существует (повторное копирование) — удаляем
+            if (File.Exists(destPath))
+            {
+                File.Delete(destPath);
+            }
+
+            // Атомарное переименование .tmp → .mp4
+            // Только после этого Encoder увидит полностью готовый файл
+            File.Move(tempPath, destPath);
 
             progress?.Report(new CopyProgressInfo
             {
@@ -248,12 +266,14 @@ public class FileCopyService
         }
         catch (OperationCanceledException)
         {
-            // Удаляем недокопированный файл
-            try { File.Delete(destPath); } catch { }
+            // Удаляем недокопированный временный файл
+            try { File.Delete(tempPath); } catch { }
             return false;
         }
         catch (Exception ex)
         {
+            // Удаляем временный файл если что-то пошло не так
+            try { File.Delete(tempPath); } catch { }
             LogService.Error($"Ошибка копирования: {sourcePath} → {destPath}", ex);
             return false;
         }
