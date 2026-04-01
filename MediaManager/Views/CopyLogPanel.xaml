@@ -15,10 +15,10 @@
                     <Button Command="{Binding ToggleLogCommand}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource PanelTextButtonStyle}">
-                                <Setter Property="Content" Value="▲ Свернуть"/>
+                                <Setter Property="Content" Value="▼ Свернуть"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsLogExpanded}" Value="False">
-                                        <Setter Property="Content" Value="▼ Развернуть"/>
+                                        <Setter Property="Content" Value="▲ Развернуть"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

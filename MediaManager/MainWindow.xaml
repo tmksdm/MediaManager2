@@ -19,6 +19,14 @@
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <DockPanel Height="40">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+
+                        <!-- Кнопка «О программе» -->
+                        <Button Content="ℹ"
+                                Command="{Binding ToggleChangelogCommand}"
+                                Style="{StaticResource TitleBarButtonStyle}"
+                                FontSize="14"
+                                ToolTip="История изменений"/>
+
                         <!-- Кнопка переключения темы -->
                         <Button x:Name="themeToggleButton"
                                 Click="ThemeToggleButton_Click"
@@ -27,6 +35,7 @@
                                 ToolTip="Переключить тему">
                             <TextBlock x:Name="themeButtonIcon" Text="🌙"/>
                         </Button>
+                        
                         <Button Content="⚙ Настройки"
                                 Command="{Binding ToggleSettingsCommand}"
                                 Style="{StaticResource TitleBarButtonStyle}"
@@ -57,6 +66,12 @@
                                  Visibility="{Binding DataContext.IsSettingsVisible,
                                               ElementName=mainWindow,
                                               Converter={StaticResource BoolToVis}}"/>
+
+            <!-- === CHANGELOG (История изменений) === -->
+            <views:ChangelogPanel DockPanel.Dock="Top"
+                                   Visibility="{Binding DataContext.IsChangelogVisible,
+                                                ElementName=mainWindow,
+                                                Converter={StaticResource BoolToVis}}"/>
 
             <!-- === TOOLBAR: ПРОЕКТ + ДАТА + ОБНОВИТЬ === -->
             <Border DockPanel.Dock="Top" Background="{DynamicResource ToolbarBackgroundBrush}"
@@ -258,14 +273,6 @@
                             Margin="6,0,0,0"
                             Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
 
-                    <!-- Скорость и оставшееся время -->
-                    <TextBlock DockPanel.Dock="Right"
-                               Text="{Binding CopySpeedText}"
-                               FontSize="12" Foreground="{DynamicResource StatusBarSpeedBrush}"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center" Margin="10,0,0,0"
-                               Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
-
                     <ProgressBar DockPanel.Dock="Right"
                                  Width="200" Height="16"
                                  Minimum="0" Maximum="100"
@@ -273,11 +280,21 @@
                                  Margin="12,0,0,0"
                                  Foreground="{DynamicResource ProgressBarForegroundBrush}"
                                  Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- Скорость и оставшееся время (теперь слева от шкалы) -->
+                    <TextBlock DockPanel.Dock="Right"
+                               Text="{Binding CopySpeedText}"
+                               FontSize="12" Foreground="{DynamicResource StatusBarSpeedBrush}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="10,0,0,0"
+                               Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}"/>
+
                     <TextBlock Text="{Binding StatusMessage}" FontSize="12"
                                Foreground="{DynamicResource StatusBarTextBrush}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
             </Border>
+
 
             <!-- === ПАНЕЛЬ ОЧЕРЕДИ КОПИРОВАНИЯ (UserControl) === -->
             <views:CopyQueuePanel DockPanel.Dock="Bottom"/>

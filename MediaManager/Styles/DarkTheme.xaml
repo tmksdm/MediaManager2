@@ -129,4 +129,12 @@
     <SolidColorBrush x:Key="DialogCancelHoverBrush"      Color="#4A4A4A"/>
     <SolidColorBrush x:Key="DialogCancelPressBrush"      Color="#5A5A5A"/>
 
+    <!-- === Панель истории изменений (Changelog) === -->
+    <SolidColorBrush x:Key="ChangelogVersionBgBrush"    Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="ChangelogVersionFgBrush"    Color="#BDBDBD"/>
+    <SolidColorBrush x:Key="ChangelogDateBrush"         Color="#757575"/>
+    <SolidColorBrush x:Key="ChangelogBulletBrush"       Color="#555555"/>
+    <SolidColorBrush x:Key="ChangelogTextBrush"         Color="#BDBDBD"/>
+
+
 </ResourceDictionary>

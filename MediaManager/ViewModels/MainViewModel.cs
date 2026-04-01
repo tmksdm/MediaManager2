@@ -141,6 +141,13 @@ public partial class MainViewModel : INotifyPropertyChanged
         set { if (_isSettingsVisible != value) { _isSettingsVisible = value; OnPropertyChanged(); } }
     }
 
+    private bool _isChangelogVisible = false;
+    public bool IsChangelogVisible
+    {
+        get => _isChangelogVisible;
+        set { if (_isChangelogVisible != value) { _isChangelogVisible = value; OnPropertyChanged(); } }
+    }
+
     private string _statusMessage = "Готово";
     public string StatusMessage
     {
@@ -358,6 +365,10 @@ public partial class MainViewModel : INotifyPropertyChanged
     /// <summary>Очистить всю очередь (оставив текущее копирование)</summary>
     public RelayCommand ClearQueueCommand { get; }
 
+    /// <summary>Показать/скрыть панель истории изменений</summary>
+    public RelayCommand ToggleChangelogCommand { get; }
+
+
     // ======================================================
     // === Конструктор ===
     // ======================================================
@@ -392,6 +403,9 @@ public partial class MainViewModel : INotifyPropertyChanged
         // Команды очереди
         RemoveFromQueueCommand = new RelayCommand(param => RemoveFromQueue(param));
         ClearQueueCommand = new RelayCommand(_ => ClearQueue());
+
+        // Команда для панели истории изменений
+        ToggleChangelogCommand = new RelayCommand(_ => IsChangelogVisible = !IsChangelogVisible);
 
         // Команды журнала
         ToggleLogCommand = new RelayCommand(_ => IsLogExpanded = !IsLogExpanded);

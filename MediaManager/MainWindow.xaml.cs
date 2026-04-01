@@ -278,10 +278,23 @@ public partial class MainWindow : Window
                 break;
 
             case Key.Escape:
-                if (_mainViewModel.IsSettingsVisible)
                 {
-                    _mainViewModel.IsSettingsVisible = false;
-                    e.Handled = true;
+                    bool closed = false;
+
+                    if (_mainViewModel.IsSettingsVisible)
+                    {
+                        _mainViewModel.IsSettingsVisible = false;
+                        closed = true;
+                    }
+
+                    if (_mainViewModel.IsChangelogVisible)
+                    {
+                        _mainViewModel.IsChangelogVisible = false;
+                        closed = true;
+                    }
+
+                    if (closed)
+                        e.Handled = true;
                 }
                 break;
 
