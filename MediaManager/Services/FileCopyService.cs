@@ -160,6 +160,10 @@ public class FileCopyService
     /// Файл сначала копируется с расширением .tmp, а после завершения
     /// переименовывается в финальное имя. Это предотвращает подхват
     /// неполного файла программами-мониторами (Adobe Media Encoder и т.п.).
+    /// 
+    /// ВАЖНО: финализация (SetLastWriteTime, SetCreationTime, File.Move)
+    /// выполняется в Task.Run, чтобы не блокировать UI-поток.
+    /// На сетевых дисках эти операции могут занимать сотни миллисекунд.
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
@@ -240,21 +244,29 @@ public class FileCopyService
                     }
                 }
             }
-            // Потоки закрыты — теперь безопасно ставить время на .tmp файл
-
-            // Копируем и время модификации, и время создания (на .tmp)
-            File.SetLastWriteTime(tempPath, sourceInfo.LastWriteTime);
-            File.SetCreationTime(tempPath, sourceInfo.CreationTime);
-
-            // Если финальный файл уже существует (повторное копирование) — удаляем
-            if (File.Exists(destPath))
+            // Потоки закрыты — теперь безопасно ставить время и переименовывать.
+            // 
+            // ВАЖНО: эти операции выполняются в фоновом потоке (Task.Run),
+            // потому что на сетевых дисках SetLastWriteTime / File.Move
+            // могут занимать сотни миллисекунд и блокировать UI-поток.
+            // Без Task.Run интерфейс «замирал» — пропадала шкала прогресса
+            // и очередь копирования не обновлялась.
+            await Task.Run(() =>
             {
-                File.Delete(destPath);
-            }
+                // Копируем и время модификации, и время создания (на .tmp)
+                File.SetLastWriteTime(tempPath, sourceInfo.LastWriteTime);
+                File.SetCreationTime(tempPath, sourceInfo.CreationTime);
 
-            // Атомарное переименование .tmp → .mp4
-            // Только после этого Encoder увидит полностью готовый файл
-            File.Move(tempPath, destPath);
+                // Если финальный файл уже существует (повторное копирование) — удаляем
+                if (File.Exists(destPath))
+                {
+                    File.Delete(destPath);
+                }
+
+                // Атомарное переименование .tmp → .mp4
+                // Только после этого Encoder увидит полностью готовый файл
+                File.Move(tempPath, destPath);
+            }, cancellationToken);
 
             progress?.Report(new CopyProgressInfo
             {
