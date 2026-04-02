@@ -144,7 +144,7 @@
                                                                 </Style>
                                                             </Button.Style>
                                                         </Button>
-                                                        <Button Content="🖥 Coder Site" Tag="Кодер Site" Click="CopyButton_Click">
+                                                        <Button Content="🖥 Coder Site" Tag="Coder Site" Click="CopyButton_Click">
                                                             <Button.Style>
                                                                 <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
                                                                     <Setter Property="Foreground" Value="#4A148C"/>
@@ -203,7 +203,7 @@
                                                                 </Style>
                                                             </Button.Style>
                                                         </Button>
-                                                        <Button Content="🖥 Coder Site" Tag="Кодер Site" Click="CopyButton_Click">
+                                                        <Button Content="🖥 Coder Site" Tag="Coder Site" Click="CopyButton_Click">
                                                             <Button.Style>
                                                                 <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
                                                                     <Setter Property="Foreground" Value="#283593"/>
@@ -232,7 +232,7 @@
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </StackPanel.Style>
-                                                        <Button Content="📁 Архив 25к" Tag="Хранилище" Click="CopyButton_Click">
+                                                        <Button Content="📁 Архив 25к" Tag="Архив 25к" Click="CopyButton_Click">
                                                             <Button.Style>
                                                                 <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
                                                                     <Setter Property="Foreground" Value="#C62828"/>
@@ -262,7 +262,7 @@
                                                                 </Style>
                                                             </Button.Style>
                                                         </Button>
-                                                        <Button Content="🖥 Coder 25к" Tag="Кодер 25к" Click="CopyButton_Click">
+                                                        <Button Content="🖥 Coder 25к" Tag="Coder 25к" Click="CopyButton_Click">
                                                             <Button.Style>
                                                                 <Style TargetType="Button" BasedOn="{StaticResource CopyButtonStyle}">
                                                                     <Setter Property="Foreground" Value="#880E4F"/>

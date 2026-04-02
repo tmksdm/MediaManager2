@@ -12,9 +12,9 @@ public static class DestinationKeys
 {
     public const string Site2 = "Site2 (архив)";
     public const string Efir = "Эфир";
-    public const string CoderSite = "Кодер Site";
-    public const string Storage = "Хранилище";
+    public const string CoderSite = "Coder Site";
+    public const string Storage = "Архив 25к";
     public const string Efir25 = "Эфир 25к";
-    public const string Coder25 = "Кодер 25к";
+    public const string Coder25 = "Coder 25к";
     public const string Stories = "Сюжеты";
 }
