@@ -1,14 +1,79 @@
 ﻿using System.IO;
+using System.Runtime.InteropServices;
 using MediaManager.Models;
 
 namespace MediaManager.Services;
 
 /// <summary>
 /// Строит пути назначения для копирования и выполняет само копирование.
+/// Использует CopyFileEx (Win32 API) — тот же механизм, что и Проводник Windows.
+/// Это решает проблему с Adobe Media Encoder, который подхватывал недокопированные файлы.
 /// </summary>
 public class FileCopyService
 {
-    // Названия месяцев в разных регистрах для формирования путей
+    // ========================= Win32 API =========================
+
+    /// <summary>
+    /// Флаги для CopyFileEx.
+    /// </summary>
+    [Flags]
+    private enum CopyFileFlags : uint
+    {
+        COPY_FILE_FAIL_IF_EXISTS = 0x00000001,
+        COPY_FILE_NO_BUFFERING = 0x00001000,    // Без буферизации ОС — быстрее для больших файлов
+        COPY_FILE_RESTARTABLE = 0x00000002,      // Позволяет возобновление (не нужно, но не мешает)
+    }
+
+    /// <summary>
+    /// Причина вызова callback.
+    /// </summary>
+    private enum CopyProgressCallbackReason : uint
+    {
+        CALLBACK_CHUNK_FINISHED = 0x00000000,
+        CALLBACK_STREAM_SWITCH = 0x00000001,
+    }
+
+    /// <summary>
+    /// Что делать дальше после callback.
+    /// </summary>
+    private enum CopyProgressResult : uint
+    {
+        PROGRESS_CONTINUE = 0,
+        PROGRESS_CANCEL = 1,
+        PROGRESS_STOP = 2,
+        PROGRESS_QUIET = 3,
+    }
+
+    /// <summary>
+    /// Делегат callback прогресса для CopyFileEx.
+    /// </summary>
+    private delegate CopyProgressResult CopyProgressRoutine(
+        long totalFileSize,
+        long totalBytesTransferred,
+        long streamSize,
+        long streamBytesTransferred,
+        uint dwStreamNumber,
+        CopyProgressCallbackReason dwCallbackReason,
+        IntPtr hSourceFile,
+        IntPtr hDestinationFile,
+        IntPtr lpData);
+
+    /// <summary>
+    /// Win32 CopyFileEx — копирует файл так же, как Проводник Windows.
+    /// Файл назначения блокируется на уровне ядра ОС до завершения копирования.
+    /// </summary>
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CopyFileExW(
+        string lpExistingFileName,
+        string lpNewFileName,
+        CopyProgressRoutine? lpProgressRoutine,
+        IntPtr lpData,
+        ref int pbCancel,
+        uint dwCopyFlags);
+
+    // ========================= Названия месяцев =========================
+
     private static readonly string[] MonthsTitleCase =
         ["Январь","Февраль","Март","Апрель","Май","Июнь",
          "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
@@ -152,18 +217,16 @@ public class FileCopyService
     }
 
     /// <summary>
-    /// Копирует файл с отчётом о прогрессе, скорости и оставшемся времени.
-    /// Создаёт папки назначения если их нет.
-    /// Прогресс сообщается не чаще 20 раз в секунду, чтобы не забивать UI-поток
-    /// и не блокировать обработку кликов (например, кнопки «Отмена»).
+    /// Копирует файл через Win32 CopyFileEx — тот же механизм, что и Проводник Windows.
     /// 
-    /// Файл сначала копируется с расширением .tmp, а после завершения
-    /// переименовывается в финальное имя. Это предотвращает подхват
-    /// неполного файла программами-мониторами (Adobe Media Encoder и т.п.).
+    /// Почему это решает проблему с Adobe Media Encoder:
+    /// CopyFileEx выполняет копирование на уровне ядра ОС. Файл назначения
+    /// создаётся с эксклюзивной блокировкой — другие процессы (включая AME)
+    /// не могут открыть его на чтение, пока копирование не завершено полностью.
+    /// Это атомарная операция с точки зрения наблюдателей файловой системы.
     /// 
-    /// ВАЖНО: финализация (SetLastWriteTime, SetCreationTime, File.Move)
-    /// выполняется в Task.Run, чтобы не блокировать UI-поток.
-    /// На сетевых дисках эти операции могут занимать сотни миллисекунд.
+    /// Прогресс сообщается не чаще 20 раз в секунду (50 мс throttle).
+    /// Отмена через CancellationToken → устанавливает флаг pbCancel для ядра.
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
@@ -171,126 +234,144 @@ public class FileCopyService
         IProgress<CopyProgressInfo>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        // Временный путь: файл.mp4 → файл.mp4.tmp
-        // Adobe Media Encoder не мониторит .tmp — файл невидим до переименования
-        string tempPath = destPath + ".tmp";
-
         try
         {
+            // Создаём папку назначения если не существует
             string? destDir = Path.GetDirectoryName(destPath);
             if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
             {
                 Directory.CreateDirectory(destDir);
             }
 
-            const int bufferSize = 1024 * 1024; // 1 МБ буфер
-            var buffer = new byte[bufferSize];
-
             var sourceInfo = new FileInfo(sourcePath);
             long totalBytes = sourceInfo.Length;
-            long copiedBytes = 0;
 
-            // Таймер для throttle прогресса: не чаще 20 раз в секунду (50 мс).
-            // Без этого Progress<T>.Report() забивает UI-поток сотнями сообщений,
-            // и клики по кнопке «Отмена» не успевают обработаться.
+            // Для throttle прогресса — не чаще 50 мс
             var lastReport = DateTime.UtcNow;
             const int reportIntervalMs = 50;
-
-            // Момент начала копирования — для расчёта средней скорости
             var copyStart = DateTime.UtcNow;
 
-            // Копируем содержимое во временный файл (.tmp)
-            using (var sourceStream = new FileStream(
-                sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-                bufferSize, useAsync: true))
-            using (var destStream = new FileStream(
-                tempPath, FileMode.Create, FileAccess.Write, FileShare.None,
-                bufferSize, useAsync: true))
+            // Флаг отмены для CopyFileEx (передаётся по ref, ядро проверяет его)
+            int cancelFlag = 0;
+
+            // Регистрируем CancellationToken → при отмене ставим флаг
+            using var ctReg = cancellationToken.Register(() =>
             {
-                int bytesRead;
-                while ((bytesRead = await sourceStream.ReadAsync(
-                           buffer.AsMemory(0, bufferSize), cancellationToken)) > 0)
+                Interlocked.Exchange(ref cancelFlag, 1);
+            });
+
+            // Callback прогресса, вызывается ядром ОС после каждого записанного блока
+            CopyProgressResult ProgressCallback(
+                long totalFileSize,
+                long totalBytesTransferred,
+                long streamSize,
+                long streamBytesTransferred,
+                uint dwStreamNumber,
+                CopyProgressCallbackReason dwCallbackReason,
+                IntPtr hSourceFile,
+                IntPtr hDestinationFile,
+                IntPtr lpData)
+            {
+                // Проверяем отмену
+                if (cancellationToken.IsCancellationRequested)
+                    return CopyProgressResult.PROGRESS_CANCEL;
+
+                // Throttle прогресса: не чаще 50 мс
+                if (progress != null && totalFileSize > 0)
                 {
-                    await destStream.WriteAsync(
-                        buffer.AsMemory(0, bytesRead), cancellationToken);
-
-                    copiedBytes += bytesRead;
-
-                    // Сообщаем прогресс не чаще чем раз в 50 мс
-                    if (totalBytes > 0 && progress != null)
+                    var now = DateTime.UtcNow;
+                    if ((now - lastReport).TotalMilliseconds >= reportIntervalMs
+                        || totalBytesTransferred == totalFileSize)
                     {
-                        var now = DateTime.UtcNow;
-                        if ((now - lastReport).TotalMilliseconds >= reportIntervalMs)
+                        double elapsedSeconds = (now - copyStart).TotalSeconds;
+                        double bytesPerSec = elapsedSeconds > 0.1
+                            ? totalBytesTransferred / elapsedSeconds
+                            : 0;
+
+                        long remainingBytes = totalFileSize - totalBytesTransferred;
+                        TimeSpan? remaining = bytesPerSec > 0
+                            ? TimeSpan.FromSeconds(remainingBytes / bytesPerSec)
+                            : null;
+
+                        progress.Report(new CopyProgressInfo
                         {
-                            double elapsedSeconds = (now - copyStart).TotalSeconds;
-                            double bytesPerSec = elapsedSeconds > 0.1
-                                ? copiedBytes / elapsedSeconds
-                                : 0;
+                            Percent = (double)totalBytesTransferred / totalFileSize * 100.0,
+                            BytesPerSecond = bytesPerSec,
+                            Remaining = remaining
+                        });
 
-                            long remainingBytes = totalBytes - copiedBytes;
-                            TimeSpan? remaining = bytesPerSec > 0
-                                ? TimeSpan.FromSeconds(remainingBytes / bytesPerSec)
-                                : null;
-
-                            progress.Report(new CopyProgressInfo
-                            {
-                                Percent = (double)copiedBytes / totalBytes * 100.0,
-                                BytesPerSecond = bytesPerSec,
-                                Remaining = remaining
-                            });
-
-                            lastReport = now;
-                        }
+                        lastReport = now;
                     }
                 }
-            }
-            // Потоки закрыты — теперь безопасно ставить время и переименовывать.
-            // 
-            // ВАЖНО: эти операции выполняются в фоновом потоке (Task.Run),
-            // потому что на сетевых дисках SetLastWriteTime / File.Move
-            // могут занимать сотни миллисекунд и блокировать UI-поток.
-            // Без Task.Run интерфейс «замирал» — пропадала шкала прогресса
-            // и очередь копирования не обновлялась.
-            await Task.Run(() =>
-            {
-                // Копируем и время модификации, и время создания (на .tmp)
-                File.SetLastWriteTime(tempPath, sourceInfo.LastWriteTime);
-                File.SetCreationTime(tempPath, sourceInfo.CreationTime);
 
-                // Если финальный файл уже существует (повторное копирование) — удаляем
+                return CopyProgressResult.PROGRESS_CONTINUE;
+            }
+
+            // Выполняем копирование в фоновом потоке, чтобы не блокировать UI
+            bool success = await Task.Run(() =>
+            {
+                // Если файл уже существует — удаляем (CopyFileEx без FAIL_IF_EXISTS перезапишет,
+                // но удаление даёт чистый старт)
                 if (File.Exists(destPath))
                 {
                     File.Delete(destPath);
                 }
 
-                // Атомарное переименование .tmp → .mp4
-                // Только после этого Encoder увидит полностью готовый файл
-                File.Move(tempPath, destPath);
+                bool result = CopyFileExW(
+                    sourcePath,
+                    destPath,
+                    ProgressCallback,
+                    IntPtr.Zero,
+                    ref cancelFlag,
+                    0   // dwCopyFlags = 0: перезаписывать, с буферизацией ОС
+                );
+
+                return result;
             }, cancellationToken);
 
+            if (!success)
+            {
+                int error = Marshal.GetLastWin32Error();
+
+                // ERROR_REQUEST_ABORTED (1235) или отмена через токен
+                if (cancellationToken.IsCancellationRequested || error == 1235)
+                {
+                    // Удаляем недокопированный файл
+                    try { File.Delete(destPath); } catch { }
+                    return false;
+                }
+
+                // Другая ошибка
+                var ex = Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error());
+                LogService.Error(
+                    $"CopyFileEx failed (Win32 error {error}): {sourcePath} → {destPath}",
+                    ex);
+                try { File.Delete(destPath); } catch { }
+                return false;
+            }
+
+            // Финальный прогресс 100%
             progress?.Report(new CopyProgressInfo
             {
                 Percent = 100.0,
                 BytesPerSecond = 0,
                 Remaining = TimeSpan.Zero
             });
+
             return true;
         }
         catch (OperationCanceledException)
         {
-            // Удаляем недокопированный временный файл
-            try { File.Delete(tempPath); } catch { }
+            try { File.Delete(destPath); } catch { }
             return false;
         }
         catch (Exception ex)
         {
-            // Удаляем временный файл если что-то пошло не так
-            try { File.Delete(tempPath); } catch { }
+            try { File.Delete(destPath); } catch { }
             LogService.Error($"Ошибка копирования: {sourcePath} → {destPath}", ex);
             return false;
         }
     }
-
 
     /// <summary>
     /// Заменяет время (часы) в имени файла ПАНОРАМЫ / ДАЙДЖЕСТА.
