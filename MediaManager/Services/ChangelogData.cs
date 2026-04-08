@@ -13,18 +13,29 @@ namespace MediaManager.Services;
 public static class ChangelogData
 {
     /// <summary>Текущая версия программы</summary>
-    public const string CurrentVersion = "260401.2";
+    public const string CurrentVersion = "260408";
 
     /// <summary>Полная история изменений, от новых к старым</summary>
     public static List<ChangelogEntry> GetChangelog()
     {
         return new List<ChangelogEntry>
         {
+
+            new()
+            {
+                Version = "260408",
+                Date = "08 апреля 2026",
+                IsCurrent = true,
+                Changes = new List<string>
+                {
+                    "Копирование через Win32 CopyFileEx — тот же механизм, что в Проводнике Windows. Решает проблему с Adobe Media Encoder, который подхватывал недокопированный файл"
+                }
+            },
+
             new()
             {
                 Version = "260401.2",
                 Date = "01 апреля 2026",
-                IsCurrent = true,
                 Changes = new List<string>
                 {
                     "Панель «История изменений»: версионность по датам коммитов, кнопка ℹ в заголовке, закрытие по Esc",
