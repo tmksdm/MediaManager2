@@ -13,7 +13,7 @@ namespace MediaManager.Services;
 public static class ChangelogData
 {
     /// <summary>Текущая версия программы</summary>
-    public const string CurrentVersion = "260408";
+    public const string CurrentVersion = "260413";
 
     /// <summary>Полная история изменений, от новых к старым</summary>
     public static List<ChangelogEntry> GetChangelog()
@@ -23,9 +23,19 @@ public static class ChangelogData
 
             new()
             {
+                Version = "260413",
+                Date = "13 апреля 2026",
+                IsCurrent = true,
+                Changes = new List<string>
+                {
+                    "Копирование через robocopy.exe вместо потокового — идентично Проводнику Windows, решает проблему с Adobe Media Encoder"
+                }
+            },
+
+            new()
+            {
                 Version = "260408",
                 Date = "08 апреля 2026",
-                IsCurrent = true,
                 Changes = new List<string>
                 {
                     "Копирование через Win32 CopyFileEx — тот же механизм, что в Проводнике Windows. Решает проблему с Adobe Media Encoder, который подхватывал недокопированный файл"
