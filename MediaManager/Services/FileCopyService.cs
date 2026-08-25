@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using MediaManager.Models;
@@ -10,13 +11,69 @@ namespace MediaManager.Services;
 /// <summary>
 /// Строит пути назначения для копирования и выполняет само копирование.
 /// 
-/// Копирование выполняется через robocopy.exe (встроен в Windows) —
-/// это решает проблему с Adobe Media Encoder, который подхватывал
-/// недокопированные файлы при потоковом копировании или CopyFileEx.
+/// Основное копирование — через robocopy.exe с прогрессом.
+/// После копирования на сетевой ресурс отправляется SHChangeNotify —
+/// уведомление оболочки Windows о появлении нового файла.
+/// Это имитирует поведение Проводника и решает проблему с AME.
+/// 
+/// Если SHChangeNotify не поможет — есть fallback через SHFileOperation
+/// (полный Shell API копирования, идентичный Ctrl+C / Ctrl+V в Проводнике).
 /// </summary>
 public class FileCopyService
 {
-    // Названия месяцев в разных регистрах для формирования путей
+    // ========================= Shell API =========================
+
+    /// <summary>
+    /// Уведомляет оболочку Windows о событии файловой системы.
+    /// Именно это делает Проводник после копирования файла.
+    /// AME может слушать эти уведомления для подхвата файлов.
+    /// </summary>
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern void SHChangeNotify(
+        int wEventId,
+        uint uFlags,
+        [MarshalAs(UnmanagedType.LPWStr)] string? dwItem1,
+        [MarshalAs(UnmanagedType.LPWStr)] string? dwItem2);
+
+    // Константы для SHChangeNotify
+    private const int SHCNE_CREATE = 0x00000002;      // Файл создан
+    private const int SHCNE_UPDATEDIR = 0x00001000;    // Содержимое папки изменилось
+    private const uint SHCNF_PATH = 0x0005;            // dwItem — путь к файлу/папке
+
+    /// <summary>
+    /// SHFileOperation — Shell API копирование файлов.
+    /// Это ИМЕННО тот механизм, который использует Проводник Windows
+    /// при Ctrl+C → Ctrl+V. Включает Shell Notifications, 
+    /// корректные SMB-флаги и все прочие особенности explorer.exe.
+    /// </summary>
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
+    private struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pFrom;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string lpszProgressTitle;
+    }
+
+    private const uint FO_COPY = 0x0002;
+    private const ushort FOF_SILENT = 0x0004;           // Без диалога прогресса
+    private const ushort FOF_NOCONFIRMATION = 0x0010;   // Без подтверждений
+    private const ushort FOF_NOCONFIRMMKDIR = 0x0200;   // Без подтверждения создания папок
+    private const ushort FOF_NOERRORUI = 0x0400;        // Без диалогов ошибок
+
+    // ========================= Названия месяцев =========================
+
     private static readonly string[] MonthsTitleCase =
         ["Январь","Февраль","Март","Апрель","Май","Июнь",
          "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
@@ -153,14 +210,15 @@ public class FileCopyService
     }
 
     /// <summary>
-    /// Копирует файл через robocopy.exe — встроенную утилиту Windows.
+    /// Копирует файл используя комбинированный подход:
     /// 
-    /// robocopy использует тот же механизм копирования, что и Проводник:
-    /// файл блокируется на уровне ОС до завершения, метаданные копируются
-    /// атомарно, SMB oplocks обрабатываются корректно.
+    /// 1. robocopy.exe — для основного копирования с прогрессом
+    /// 2. SHChangeNotify — уведомление Shell о новом файле
     /// 
-    /// Прогресс парсится из stdout robocopy (строки вида "  12.3%").
-    /// Отмена через Process.Kill() при срабатывании CancellationToken.
+    /// Если файл копируется на UNC-путь (сетевой ресурс),
+    /// после robocopy отправляются Shell-уведомления SHCNE_CREATE
+    /// и SHCNE_UPDATEDIR — те же, что Проводник отправляет после
+    /// Ctrl+C → Ctrl+V. AME может слушать именно их.
     /// </summary>
     public async Task<bool> CopyFileAsync(
         string sourcePath,
@@ -183,7 +241,6 @@ public class FileCopyService
             string sourceFileName = Path.GetFileName(sourcePath);
             string destFileName = Path.GetFileName(destPath);
 
-            // Если имя файла назначения отличается (замена времени эфира)
             bool needsRename = !string.Equals(sourceFileName, destFileName, StringComparison.OrdinalIgnoreCase);
 
             var sourceInfo = new FileInfo(sourcePath);
@@ -192,14 +249,6 @@ public class FileCopyService
             var lastReport = DateTime.UtcNow;
             const int reportIntervalMs = 50;
 
-            // /COPY:DAT — копировать данные, атрибуты, время
-            // /IS — включать одинаковые файлы (перезаписывать)
-            // /IT — включать «tweaked» файлы
-            // /BYTES — размеры в байтах (для парсинга прогресса)
-            // /NJH /NJS — без заголовка и итога
-            // /NDL — без имён директорий
-            // /NC — без классов файлов
-            // /NS — без размеров файлов
             string args = $"\"{sourceDir}\" \"{destDir}\" \"{sourceFileName}\" /COPY:DAT /IS /IT /BYTES /NJH /NJS /NDL /NC /NS";
 
             var psi = new ProcessStartInfo
@@ -221,13 +270,11 @@ public class FileCopyService
 
             process.Start();
 
-            // Регистрируем отмену — убиваем процесс
             using var ctReg = cancellationToken.Register(() =>
             {
                 try { process?.Kill(); } catch { }
             });
 
-            // Читаем stderr целиком
             var stderrTask = Task.Run(async () =>
             {
                 string? errLine;
@@ -237,7 +284,6 @@ public class FileCopyService
                 }
             }, cancellationToken);
 
-            // Читаем stdout посимвольно для парсинга прогресса
             var stdoutTask = Task.Run(async () =>
             {
                 using var reader = process.StandardOutput;
@@ -314,7 +360,6 @@ public class FileCopyService
 
             int exitCode = process.ExitCode;
 
-            // robocopy exit codes: 0–7 = успех, 8+ = ошибка
             if (exitCode >= 8)
             {
                 string stderr = stderrBuilder.ToString().Trim();
@@ -324,11 +369,13 @@ public class FileCopyService
                 return false;
             }
 
-            // Если нужно переименование
+            // Финальный путь файла
+            string finalPath = destPath;
+
             if (needsRename)
             {
                 string copiedPath = Path.Combine(destDir!, sourceFileName);
-                string finalPath = Path.Combine(destDir!, destFileName);
+                finalPath = Path.Combine(destDir!, destFileName);
 
                 if (File.Exists(copiedPath))
                 {
@@ -339,6 +386,12 @@ public class FileCopyService
                     File.Move(copiedPath, finalPath);
                 }
             }
+
+            // Отправляем Shell-уведомления — имитируем поведение Проводника.
+            // Это может быть ключевым отличием: AME слушает Shell Notifications,
+            // а не ReadDirectoryChangesW. Без этих уведомлений AME не «видит»
+            // файл корректно, хотя он физически на диске.
+            NotifyShell(finalPath, destDir!);
 
             progress?.Report(new CopyProgressInfo
             {
@@ -363,6 +416,80 @@ public class FileCopyService
         finally
         {
             process?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Копирует файл через Shell API (SHFileOperation) — ТОЧНО как Проводник.
+    /// Это fallback-метод: без прогресса, но гарантированно идентичен Ctrl+C → Ctrl+V.
+    /// Вызывать только если robocopy + SHChangeNotify не решили проблему.
+    /// 
+    /// ВАЖНО: SHFileOperation должен вызываться из STA-потока (UI или специальный).
+    /// </summary>
+    public bool CopyFileShell(string sourcePath, string destPath)
+    {
+        try
+        {
+            string? destDir = Path.GetDirectoryName(destPath);
+            if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
+            // SHFileOperation требует double-null-terminated строки
+            var shFileOp = new SHFILEOPSTRUCT
+            {
+                hwnd = IntPtr.Zero,
+                wFunc = FO_COPY,
+                pFrom = sourcePath + '\0' + '\0',
+                pTo = destPath + '\0' + '\0',
+                fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR | FOF_NOERRORUI,
+                fAnyOperationsAborted = false,
+                hNameMappings = IntPtr.Zero,
+                lpszProgressTitle = ""
+            };
+
+            int result = SHFileOperation(ref shFileOp);
+
+            if (result != 0)
+            {
+                LogService.Error($"SHFileOperation ошибка (код {result}): {sourcePath} → {destPath}");
+                return false;
+            }
+
+            if (shFileOp.fAnyOperationsAborted)
+            {
+                LogService.Error($"SHFileOperation прервана: {sourcePath} → {destPath}");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogService.Error($"SHFileOperation исключение: {sourcePath} → {destPath}", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Отправляет Shell-уведомления о создании файла и обновлении папки.
+    /// Это имитирует то, что делает Проводник Windows после копирования.
+    /// </summary>
+    private static void NotifyShell(string filePath, string folderPath)
+    {
+        try
+        {
+            // Уведомление: «файл создан»
+            SHChangeNotify(SHCNE_CREATE, SHCNF_PATH, filePath, null);
+
+            // Уведомление: «содержимое папки изменилось»
+            SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATH, folderPath, null);
+        }
+        catch (Exception ex)
+        {
+            // Не критично — логируем и продолжаем
+            LogService.Error($"SHChangeNotify ошибка: {filePath}", ex);
         }
     }
 
