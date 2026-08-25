@@ -10,14 +10,10 @@ namespace MediaManager.Services;
 
 /// <summary>
 /// Строит пути назначения для копирования и выполняет само копирование.
-/// 
+///
 /// Основное копирование — через robocopy.exe с прогрессом.
 /// После копирования на сетевой ресурс отправляется SHChangeNotify —
 /// уведомление оболочки Windows о появлении нового файла.
-/// Это имитирует поведение Проводника и решает проблему с AME.
-/// 
-/// Если SHChangeNotify не поможет — есть fallback через SHFileOperation
-/// (полный Shell API копирования, идентичный Ctrl+C / Ctrl+V в Проводнике).
 /// </summary>
 public class FileCopyService
 {
@@ -26,7 +22,6 @@ public class FileCopyService
     /// <summary>
     /// Уведомляет оболочку Windows о событии файловой системы.
     /// Именно это делает Проводник после копирования файла.
-    /// AME может слушать эти уведомления для подхвата файлов.
     /// </summary>
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern void SHChangeNotify(
@@ -39,38 +34,6 @@ public class FileCopyService
     private const int SHCNE_CREATE = 0x00000002;      // Файл создан
     private const int SHCNE_UPDATEDIR = 0x00001000;    // Содержимое папки изменилось
     private const uint SHCNF_PATH = 0x0005;            // dwItem — путь к файлу/папке
-
-    /// <summary>
-    /// SHFileOperation — Shell API копирование файлов.
-    /// Это ИМЕННО тот механизм, который использует Проводник Windows
-    /// при Ctrl+C → Ctrl+V. Включает Shell Notifications, 
-    /// корректные SMB-флаги и все прочие особенности explorer.exe.
-    /// </summary>
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
-    private struct SHFILEOPSTRUCT
-    {
-        public IntPtr hwnd;
-        public uint wFunc;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string pFrom;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string pTo;
-        public ushort fFlags;
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool fAnyOperationsAborted;
-        public IntPtr hNameMappings;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string lpszProgressTitle;
-    }
-
-    private const uint FO_COPY = 0x0002;
-    private const ushort FOF_SILENT = 0x0004;           // Без диалога прогресса
-    private const ushort FOF_NOCONFIRMATION = 0x0010;   // Без подтверждений
-    private const ushort FOF_NOCONFIRMMKDIR = 0x0200;   // Без подтверждения создания папок
-    private const ushort FOF_NOERRORUI = 0x0400;        // Без диалогов ошибок
 
     // ========================= Названия месяцев =========================
 
@@ -404,12 +367,12 @@ public class FileCopyService
         }
         catch (OperationCanceledException)
         {
-            try { File.Delete(destPath); } catch { }
+            DeleteIncompleteCopy(sourcePath, destPath);
             return false;
         }
         catch (Exception ex)
         {
-            try { File.Delete(destPath); } catch { }
+            DeleteIncompleteCopy(sourcePath, destPath);
             LogService.Error($"Ошибка копирования: {sourcePath} → {destPath}", ex);
             return false;
         }
@@ -420,56 +383,29 @@ public class FileCopyService
     }
 
     /// <summary>
-    /// Копирует файл через Shell API (SHFileOperation) — ТОЧНО как Проводник.
-    /// Это fallback-метод: без прогресса, но гарантированно идентичен Ctrl+C → Ctrl+V.
-    /// Вызывать только если robocopy + SHChangeNotify не решили проблему.
-    /// 
-    /// ВАЖНО: SHFileOperation должен вызываться из STA-потока (UI или специальный).
+    /// Удаляет недокопированный файл после отмены или сбоя.
+    /// При копировании с переименованием (эфирное время в имени) robocopy
+    /// кладёт файл под исходным именем — удаляем и его тоже.
     /// </summary>
-    public bool CopyFileShell(string sourcePath, string destPath)
+    private static void DeleteIncompleteCopy(string sourcePath, string destPath)
     {
         try
         {
             string? destDir = Path.GetDirectoryName(destPath);
-            if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+            string sourceFileName = Path.GetFileName(sourcePath);
+
+            if (!string.IsNullOrEmpty(destDir))
             {
-                Directory.CreateDirectory(destDir);
+                string copiedPath = Path.Combine(destDir, sourceFileName);
+                if (!string.Equals(copiedPath, destPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Delete(copiedPath); } catch { }
+                }
             }
 
-            // SHFileOperation требует double-null-terminated строки
-            var shFileOp = new SHFILEOPSTRUCT
-            {
-                hwnd = IntPtr.Zero,
-                wFunc = FO_COPY,
-                pFrom = sourcePath + '\0' + '\0',
-                pTo = destPath + '\0' + '\0',
-                fFlags = FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR | FOF_NOERRORUI,
-                fAnyOperationsAborted = false,
-                hNameMappings = IntPtr.Zero,
-                lpszProgressTitle = ""
-            };
-
-            int result = SHFileOperation(ref shFileOp);
-
-            if (result != 0)
-            {
-                LogService.Error($"SHFileOperation ошибка (код {result}): {sourcePath} → {destPath}");
-                return false;
-            }
-
-            if (shFileOp.fAnyOperationsAborted)
-            {
-                LogService.Error($"SHFileOperation прервана: {sourcePath} → {destPath}");
-                return false;
-            }
-
-            return true;
+            try { File.Delete(destPath); } catch { }
         }
-        catch (Exception ex)
-        {
-            LogService.Error($"SHFileOperation исключение: {sourcePath} → {destPath}", ex);
-            return false;
-        }
+        catch { }
     }
 
     /// <summary>
