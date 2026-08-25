@@ -43,18 +43,110 @@ public partial class FileListPanel : UserControl
     /// <summary>
     /// Обработчик клавиатуры для ListBox файлов.
     /// Enter — открыть выделенный файл.
-    /// Стрелки ↑↓ обрабатываются ListBox автоматически.
+    /// Стрелки ↑↓ обрабатываются ListBox автоматически,
+    /// а на границе карточки выделение переходит в соседнюю карточку.
     /// </summary>
     private void FileListBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && sender is ListBox listBox)
+        if (sender is not ListBox listBox)
+            return;
+
+        if (e.Key == Key.Enter && listBox.SelectedItem is MediaFile file)
         {
-            if (listBox.SelectedItem is MediaFile file)
-            {
-                OpenFileInShell(file.FullPath);
-                e.Handled = true;
-            }
+            OpenFileInShell(file.FullPath);
+            e.Handled = true;
+            return;
         }
+
+        // Переход между карточками папок: ↓ на последней строке
+        // переносит выделение в следующую карточку, ↑ на первой — в предыдущую
+        if (e.Key is Key.Down or Key.Up)
+        {
+            bool atBoundary =
+                (e.Key == Key.Down && listBox.SelectedIndex == listBox.Items.Count - 1) ||
+                (e.Key == Key.Up && listBox.SelectedIndex <= 0);
+
+            if (!atBoundary)
+                return;
+
+            var target = FindNeighborListBox(listBox, next: e.Key == Key.Down);
+            if (target == null || target.Items.Count == 0)
+                return;
+
+            int index = e.Key == Key.Down ? 0 : target.Items.Count - 1;
+            if (target.ItemContainerGenerator.ContainerFromIndex(index) is not ListBoxItem container)
+                return;
+
+            // Снимаем выделение в прежней карточке, чтобы выделенным был только один сюжет
+            listBox.SelectedIndex = -1;
+
+            target.SelectedItem = target.Items[index];
+            container.BringIntoView();
+            container.Focus();
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Ищет соседний ListBox файлов: следующий или предыдущий
+    /// по вертикальному расположению карточек на экране.
+    /// Список зациклен: после последней карточки идёт первая,
+    /// перед первой — последняя.
+    /// </summary>
+    private ListBox? FindNeighborListBox(ListBox current, bool next)
+    {
+        var all = new List<(ListBox Box, double Y)>();
+        CollectListBoxes(this, all);
+        if (all.Count == 0)
+            return null;
+
+        all.Sort((a, b) => a.Y.CompareTo(b.Y));
+        int i = all.FindIndex(x => ReferenceEquals(x.Box, current));
+        if (i < 0)
+            return null;
+
+        int targetIndex = next ? i + 1 : i - 1;
+        if (targetIndex >= all.Count)
+            targetIndex = 0;
+        else if (targetIndex < 0)
+            targetIndex = all.Count - 1;
+        return all[targetIndex].Box;
+    }
+
+    /// <summary>
+    /// Собирает все ListBox файлов внутри панели с их вертикальными координатами.
+    /// </summary>
+    private void CollectListBoxes(DependencyObject parent, List<(ListBox Box, double Y)> result)
+    {
+        int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is ListBox listBox)
+            {
+                double y = listBox.TransformToAncestor(this).Transform(new Point(0, 0)).Y;
+                result.Add((listBox, y));
+            }
+            CollectListBoxes(child, result);
+        }
+    }
+
+    // ======================================================
+    // === Колёсико мыши: прокрутка списка сюжетов ===
+    // ======================================================
+
+    /// <summary>
+    /// Прокрутка списка колёсиком мыши.
+    /// Внутренние ListBox карточек перехватывают событие колёсика,
+    /// но сами прокручивать нечего — из-за этого список не двигался
+    /// над строками файлов. PreviewMouseWheel перехватывает событие
+    /// раньше (туннелирование) и прокручивает внешний ScrollViewer.
+    /// </summary>
+    private void FileListScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        FileListScrollViewer.ScrollToVerticalOffset(
+            FileListScrollViewer.VerticalOffset - e.Delta / 3.0);
+        e.Handled = true;
     }
 
     // ======================================================

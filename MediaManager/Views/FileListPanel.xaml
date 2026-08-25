@@ -48,7 +48,9 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16"
+    <ScrollViewer x:Name="FileListScrollViewer"
+                  VerticalScrollBarVisibility="Auto" Padding="16"
+                  PreviewMouseWheel="FileListScrollViewer_PreviewMouseWheel"
                   Background="{DynamicResource ScrollViewerBackgroundBrush}">
         <Grid>
             <!-- Пустое состояние -->

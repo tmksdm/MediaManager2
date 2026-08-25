@@ -13,7 +13,7 @@ namespace MediaManager.Services;
 public static class ChangelogData
 {
     /// <summary>Текущая версия программы</summary>
-    public const string CurrentVersion = "260413";
+    public const string CurrentVersion = "260825";
 
     /// <summary>Полная история изменений, от новых к старым</summary>
     public static List<ChangelogEntry> GetChangelog()
@@ -23,9 +23,20 @@ public static class ChangelogData
 
             new()
             {
+                Version = "260825",
+                Date = "25 августа 2026",
+                IsCurrent = true,
+                Changes = new List<string>
+                {
+                    "Прокрутка списка сюжетов колёсиком мыши над любой строкой и кнопкой — раньше работало только над пустым фоном у края",
+                    "Сквозная навигация стрелками ↑↓ между карточками папок: на границе карточки выделение переходит в соседнюю, список зациклен"
+                }
+            },
+
+            new()
+            {
                 Version = "260413",
                 Date = "13 апреля 2026",
-                IsCurrent = true,
                 Changes = new List<string>
                 {
                     "Копирование через robocopy.exe вместо потокового — идентично Проводнику Windows, решает проблему с Adobe Media Encoder"
